@@ -1,0 +1,6 @@
+#!/bin/bash
+#SBATCH --time=10:00:00
+#SBATCH --output=/scratch/other/sopi/CCREAIM/logs/nvidia-smi-res.txt
+#SBATCH --gres=gpu:v100:1
+
+nvidia-smi
