@@ -4,11 +4,11 @@ import wandb
 from omegaconf import DictConfig
 
 from model import ae, transformer, vae, vqvae
-from util import util
+from utils import dataset, util
 
 
 def train_step(model, batch):
-    print("afdlkjafdkj")
+    pass
 
 
 def train(model, dataloader, cfg: DictConfig):
@@ -52,12 +52,19 @@ def main(cfg: DictConfig):
 
     if cfg.model != "transformer":
         # get sound dataset for training
-        data = None
+        data = dataset.AudioDataset(cfg.data_path)
+        print(len(data))
+        dataloader = torch.utils.data.DataLoader(data)  # num_workers
+        for da in dataloader:
+            print(da.size())
+            print(list(da.size())[1] / 16000)
+            break
     else:
         # get feature dataset for training
         data = None
+        dataloader = None
 
-    train(model, data, cfg)
+    train(model, dataloader, cfg)
 
 
 if __name__ == "__main__":
