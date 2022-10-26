@@ -1,0 +1,29 @@
+hydra:
+  run:
+    dir: /scratch/other/sopi/CCREAIM/logs/hydra_output/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}
+
+defaults:
+    - _self_
+    - runs: smoke_test
+
+seed: 0
+exp_name: base
+run_id: ???
+
+model: ae
+model_path: /scratch/other/sopi/CCREAIM/trained_models
+data_path: /scratch/other/sopi/CCREAIM/datasets
+
+epochs: 1
+batch_size: 64
+learning_rate: 1e-3
+gpus: 1
+
+
+
+save_logging: true
+save_model: true
+wandb: true
+silent: false
+
+run_suffix: 0
