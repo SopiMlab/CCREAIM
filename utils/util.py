@@ -32,13 +32,13 @@ def chop_sample(sample: torch.Tensor, sample_length: int) -> List[torch.Tensor]:
 def chop_dataset(in_root: str, out_root: str, ext: str, sample_length: int):
     samples_paths = get_sample_path_list(Path(in_root), ext)
     for pth in samples_paths:
-        full_sample, sample_rate = torchaudio.load(str(pth))
-        chopped_samples = chop_sample(full_sample, sample_length)
+        full_sample, sample_rate = torchaudio.load(str(pth), format=ext)
+        chopped_samples = chop_sample(full_sample.squeeze(), sample_length)
         for i, cs in enumerate(chopped_samples):
             out_path = Path(out_root) / Path(
                 str(pth.stem) + f"_{i:03d}" + str(pth.suffix)
             )
-            torchaudio.save(out_path, cs, sample_rate)
+            torchaudio.save(out_path, cs.unsqueeze(0), sample_rate)
 
 
 def get_sample_path_list(data_root: Path, ext: str = "mp3") -> List[Path]:
