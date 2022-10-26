@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+import torch
 from torch import nn
 
 """
@@ -38,7 +39,7 @@ class Encoder(nn.Module):
         # Create the first layer separately to allow changing config.INPUT_SIZE freely
         first_hidden_layer_input_ch = config.HIDDEN_LAYER_SPECS[0]["input_ch"]
         input_layer = nn.Conv1d(
-            config.INPUT_SIZE, first_hidden_layer_input_ch, 7
+            1, first_hidden_layer_input_ch, 7
         )  # kernel_size = from the old tf implementation
         modules.append(input_layer)
         modules.append(nn.BatchNorm1d(first_hidden_layer_input_ch))
@@ -137,6 +138,15 @@ class AutoEncoder(nn.Module):
     def __init__(self, encoder_config, decoder_config):
         super().__init__()
         self.net = nn.Sequential(Encoder(encoder_config), Decoder(decoder_config))
+        # TODO parameterise these
+        self.optimizer = torch.optim.Adam(self.parameters(), 1e-3)
+        self.loss_fn = nn.MSELoss()
 
     def forward(self, input_data):
         return self.net(input_data)
+
+    def train_step(self, prediction, original):
+        loss = self.loss_fn(prediction, original)
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()

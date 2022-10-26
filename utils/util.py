@@ -35,10 +35,14 @@ def chop_dataset(in_root: str, out_root: str, ext: str, sample_length: int):
         full_sample, sample_rate = torchaudio.load(str(pth), format=ext)
         chopped_samples = chop_sample(full_sample.squeeze(), sample_length)
         for i, cs in enumerate(chopped_samples):
-            out_path = Path(out_root) / Path(
-                str(pth.stem) + f"_{i:03d}" + str(pth.suffix)
+            out_path = Path(out_root) / Path(str(pth.stem) + f"_{i:03d}" + ".wav")
+            torchaudio.save(
+                out_path,
+                cs.unsqueeze(0),
+                sample_rate,
+                encoding="PCM_F",
+                bits_per_sample=32,
             )
-            torchaudio.save(out_path, cs.unsqueeze(0), sample_rate)
 
 
 def get_sample_path_list(data_root: Path, ext: str = "mp3") -> List[Path]:

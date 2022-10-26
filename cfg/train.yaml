@@ -11,8 +11,11 @@ exp_name: base
 run_id: ???
 
 model: ae
+seq_length: 1000
+
 model_path: /scratch/other/sopi/CCREAIM/trained_models
-data_path: /scratch/other/sopi/CCREAIM/datasets
+original_data_root: /scratch/other/sopi/CCREAIM/datasets/magna-tag-a-tune
+data_root: /scratch/other/sopi/CCREAIM/datasets
 
 epochs: 1
 batch_size: 64
