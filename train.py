@@ -12,7 +12,7 @@ from utils import dataset, util
 def train(
     model: torch.nn.Module,
     dataloader: torch.utils.data.DataLoader,
-    optimizer,
+    optimizer,  # torch optimizer
     device: torch.device,
 ):
     model.train()
@@ -35,6 +35,7 @@ def main(cfg: DictConfig):
     Raises:
         ValueError: if misconfiguration
     """
+    print(cfg)
     if cfg.wandb:
         wandb.init(
             project="ccreaim",
@@ -48,16 +49,7 @@ def main(cfg: DictConfig):
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
     if cfg.model == "ae":
-
-        hidden_spec = {"input_ch": 16, "output_ch": 16, "kernel_size": 14, "stride": 1}
-
-        enc_config = ae.EncoderConfig(
-            INPUT_SIZE=1, LATENT_SIZE=200, HIDDEN_LAYER_SPECS=[hidden_spec]
-        )
-        dec_config = ae.DecoderConfig(LATENT_SIZE=200, HIDDEN_LAYER_SPECS=[hidden_spec])
-
-        model = ae.AutoEncoder(enc_config, dec_config)
-
+        model = None
     elif cfg.model == "vae":
         model = None
     elif cfg.model == "vq-vae":
@@ -86,16 +78,17 @@ def main(cfg: DictConfig):
 
         # get sound dataset for training
         data = dataset.AudioDataset(data_root_sample_len)
-        dataloader = torch.utils.data.DataLoader(data, batch_size=1)  # num_workers
 
     else:
         if not cfg.data_root.exists():
             raise ValueError("Data folder does not exist: " + cfg.data_root)
         # get feature dataset for training
         data = None
-        dataloader = None
 
-    optimizer = torch.optim.Adam(model.parameters(), 1e-3)
+    dataloader = torch.utils.data.DataLoader(
+        data, batch_size=cfg.batch_size
+    )  # num_workers
+    optimizer = torch.optim.Adam(model.parameters(), cfg.learning_rate)
 
     # move model to whatever device is goint to be used
     model.to(device)
