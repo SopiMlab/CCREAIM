@@ -16,13 +16,23 @@ def train(
     device: torch.device,
 ):
     model.train()
-    for batchnum, seq in enumerate(dataloader):
-        seq.to(device)
-        pred = model(seq)
-        loss = model.loss_fn(pred, seq)
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+    for epoch in range(3):
+        running_loss = torch.tensor(0.0)
+        for batchnum, seq in enumerate(dataloader):
+            if seq.size()[2] != 1000:
+                break
+            seq.to(device)
+            pred = model(seq)
+            loss = model.loss_fn(pred, seq)
+            running_loss += loss
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            if batchnum % 100 == 0:
+                print(batchnum)
+                print("Loss: {}".format(loss))
+        print("Epoch complete, total running loss:")
+        print(running_loss)
 
 
 @hydra.main(version_base=None, config_path="cfg", config_name="train")
@@ -48,16 +58,7 @@ def main(cfg: DictConfig):
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
     if cfg.model == "ae":
-
-        hidden_spec = {"input_ch": 16, "output_ch": 16, "kernel_size": 14, "stride": 1}
-
-        enc_config = ae.EncoderConfig(
-            INPUT_SIZE=1, LATENT_SIZE=200, HIDDEN_LAYER_SPECS=[hidden_spec]
-        )
-        dec_config = ae.DecoderConfig(LATENT_SIZE=200, HIDDEN_LAYER_SPECS=[hidden_spec])
-
-        model = ae.AutoEncoder(enc_config, dec_config)
-
+        model = ae.get_autoencoder("base")
     elif cfg.model == "vae":
         model = None
     elif cfg.model == "vq-vae":
