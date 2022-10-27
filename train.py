@@ -12,13 +12,17 @@ from utils import dataset, util
 def train(
     model: torch.nn.Module,
     dataloader: torch.utils.data.DataLoader,
+    optimizer,
     device: torch.device,
 ):
     model.train()
     for batchnum, seq in enumerate(dataloader):
         seq.to(device)
         pred = model(seq)
-        model.train_step(pred, seq)
+        loss = model.loss_fn(pred, seq)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
 
 
 @hydra.main(version_base=None, config_path="cfg", config_name="train")
@@ -91,8 +95,11 @@ def main(cfg: DictConfig):
         data = None
         dataloader = None
 
+    optimizer = torch.optim.Adam(model.parameters(), 1e-3)
+
+    # move model to whatever device is goint to be used
     model.to(device)
-    train(model, dataloader, device)
+    train(model, dataloader, optimizer, device)
 
 
 if __name__ == "__main__":

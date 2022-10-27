@@ -139,14 +139,7 @@ class AutoEncoder(nn.Module):
         super().__init__()
         self.net = nn.Sequential(Encoder(encoder_config), Decoder(decoder_config))
         # TODO parameterise these
-        self.optimizer = torch.optim.Adam(self.parameters(), 1e-3)
         self.loss_fn = nn.MSELoss()
 
     def forward(self, input_data):
         return self.net(input_data)
-
-    def train_step(self, prediction, original):
-        loss = self.loss_fn(prediction, original)
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
