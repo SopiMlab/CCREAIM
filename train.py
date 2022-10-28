@@ -2,9 +2,9 @@ from pathlib import Path
 
 import hydra
 import torch
-import wandb
 from omegaconf import DictConfig
 
+import wandb
 from model import ae, transformer, vae, vqvae
 from utils import dataset, util
 
@@ -21,7 +21,7 @@ def train(
         for batchnum, seq in enumerate(dataloader):
             if seq.size()[2] != 1000:
                 break
-            seq.to(device)
+            seq = seq.to(device)
             pred = model(seq)
             loss = model.loss_fn(pred, seq)
             running_loss += loss
@@ -99,7 +99,7 @@ def main(cfg: DictConfig):
     optimizer = torch.optim.Adam(model.parameters(), 1e-3)
 
     # move model to whatever device is goint to be used
-    model.to(device)
+    model = model.to(device)
     train(model, dataloader, optimizer, device)
 
 
