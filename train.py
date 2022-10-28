@@ -2,9 +2,9 @@ from pathlib import Path
 
 import hydra
 import torch
-import wandb
 from omegaconf import DictConfig
 
+import wandb
 from model import ae, transformer, vae, vqvae
 from utils import dataset, util
 
@@ -16,13 +16,23 @@ def train(
     device: torch.device,
 ):
     model.train()
-    for batchnum, seq in enumerate(dataloader):
-        seq.to(device)
-        pred = model(seq)
-        loss = model.loss_fn(pred, seq)
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+    for epoch in range(3):
+        running_loss = torch.tensor(0.0)
+        for batchnum, seq in enumerate(dataloader):
+            if seq.size()[2] != 1000:
+                break
+            seq = seq.to(device)
+            pred = model(seq)
+            loss = model.loss_fn(pred, seq)
+            running_loss += loss
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            if batchnum % 100 == 0:
+                print(batchnum)
+                print("Loss: {}".format(loss))
+        print("Epoch complete, total running loss:")
+        print(running_loss)
 
 
 @hydra.main(version_base=None, config_path="cfg", config_name="train")
@@ -49,7 +59,7 @@ def main(cfg: DictConfig):
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
     if cfg.model == "ae":
-        model = None
+        model = ae.get_autoencoder("base")
     elif cfg.model == "vae":
         model = None
     elif cfg.model == "vq-vae":
@@ -91,7 +101,7 @@ def main(cfg: DictConfig):
     optimizer = torch.optim.Adam(model.parameters(), cfg.learning_rate)
 
     # move model to whatever device is goint to be used
-    model.to(device)
+    model = model.to(device)
     train(model, dataloader, optimizer, device)
 
 

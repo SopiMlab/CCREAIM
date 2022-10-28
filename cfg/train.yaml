@@ -5,29 +5,33 @@ hydra:
 defaults:
     - _self_
     - runs: smoke_test
+    #- override hydra/launcher: submitit_slurm
 
-seed: 0
-exp_name: base
-run_id: ???
-
-model: ae
-model_version: base
-seq_length: 1000
-
-model_path: /scratch/other/sopi/CCREAIM/trained_models
-original_data_root: /scratch/other/sopi/CCREAIM/datasets/magna-tag-a-tune
-data_root: /scratch/other/sopi/CCREAIM/datasets
-
-epochs: 1
-batch_size: 8
-learning_rate: 1e-3
-gpus: 1
-
-
-
+# Logging
 save_logging: true
 save_model: true
 wandb: true
 silent: false
-
+seed: 0
+exp_name: base
+run_id: 0
 run_suffix: 0
+
+
+# Parameters for slurm
+gres: gpu:v100:1
+
+# Saved model destination
+model_path: /scratch/other/sopi/CCREAIM/trained_models
+
+# Data
+original_data_root: /scratch/other/sopi/CCREAIM/datasets/magna-tag-a-tune
+data_root: /scratch/other/sopi/CCREAIM/datasets
+
+
+# Hyperparameters for training
+model: ae
+seq_length: 1000
+epochs: 1
+batch_size: 8
+learning_rate: 1e-3
