@@ -4,7 +4,4 @@
 #SBATCH --output=/scratch/other/sopi/CCREAIM/logs/out_%A_%a.txt
 #SBATCH --gres=gpu:v100:1
 
-
-source activate "/scratch/others/sopi/conda/ccreaim"
-
-srun python train.py wandb=False runs=smoke_test
+srun python train.py runs=smoke_test $@

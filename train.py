@@ -14,25 +14,42 @@ def train(
     dataloader: torch.utils.data.DataLoader,
     optimizer,  # torch optimizer
     device: torch.device,
+    cfg: DictConfig,
 ):
+
+    exp_path = Path(cfg.model_path) / Path(cfg.exp_name)
+    exp_path.mkdir(exist_ok=True)
+    model_name = f"{cfg.model}_seqlen-{cfg.seq_length}_bs-{cfg.batch_size}_lr-{cfg.learning_rate}_seed-{cfg.seed}"
+
     model.train()
-    for epoch in range(3):
+    for epoch in range(cfg.epochs):
         running_loss = torch.tensor(0.0)
         for batchnum, seq in enumerate(dataloader):
-            if seq.size()[2] != 1000:
-                break
             seq = seq.to(device)
             pred = model(seq)
             loss = model.loss_fn(pred, seq)
-            running_loss += loss
+            running_loss += loss.detach().cpu().item()
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            if batchnum % 100 == 0:
-                print(batchnum)
-                print("Loss: {}".format(loss))
-        print("Epoch complete, total running loss:")
-        print(running_loss)
+
+            if not cfg.silent and batchnum % 100 == 0:
+                print(
+                    f"{epoch + 1:03d}/{cfg.epochs:05d} - {batchnum}/{len(dataloader)} - loss: {loss}"
+                )
+            if cfg.wandb:
+                wandb.log({"loss": loss})
+
+        if not cfg.silent:
+            print(f"Epoch complete, total loss: {running_loss}")
+
+        if cfg.checkpoint != 0 and epoch % cfg.checkpoint == 0:
+            save_path = exp_path / Path(f"{model_name}_ep-{epoch:03d}.pth")
+            torch.save(model.cpu().state_dict(), save_path)
+
+    # Save final model
+    final_save_path = exp_path / Path(f"{model_name}_final.pth")
+    torch.save(model.cpu().state_dict(), final_save_path)
 
 
 @hydra.main(version_base=None, config_path="cfg", config_name="train")
@@ -87,7 +104,7 @@ def main(cfg: DictConfig):
             )
 
         # get sound dataset for training
-        data = dataset.AudioDataset(data_root_sample_len)
+        data = dataset.AudioDataset(data_root_sample_len, cfg.seq_length)
 
     else:
         if not cfg.data_root.exists():
@@ -96,13 +113,13 @@ def main(cfg: DictConfig):
         data = None
 
     dataloader = torch.utils.data.DataLoader(
-        data, batch_size=cfg.batch_size
+        data, batch_size=cfg.batch_size, shuffle=cfg.shuffle, num_workers=2
     )  # num_workers
     optimizer = torch.optim.Adam(model.parameters(), cfg.learning_rate)
 
     # move model to whatever device is goint to be used
     model = model.to(device)
-    train(model, dataloader, optimizer, device)
+    train(model, dataloader, optimizer, device, cfg)
 
 
 if __name__ == "__main__":
