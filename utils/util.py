@@ -6,6 +6,7 @@ from typing import List
 import numpy as np
 import torch
 import torchaudio
+from omegaconf import DictConfig
 
 
 def set_seed(seed: int):
@@ -55,3 +56,11 @@ def conf_same_padding_calc(length: int, stride: int, kernel_size: int):
         pad = max(kernel_size - (length % stride), 0)
 
     return pad // 2
+
+
+# Returns the path to the directory where a model is exported to/imported from according
+# to configuration in cfg, as well as the base name of the model.
+def get_model_path(cfg: DictConfig):
+    exp_path = Path(cfg.model_path) / Path(cfg.exp_name)
+    model_name = f"{cfg.model}_seqlen-{cfg.seq_length}_bs-{cfg.batch_size}_lr-{cfg.learning_rate}_seed-{cfg.seed}"
+    return exp_path, model_name

@@ -8,6 +8,7 @@ defaults:
     - runs: smoke_test
     #- override hydra/launcher: submitit_slurm
 
+test: true
 
 # Parameters for slurm
 gres: gpu:v100:1
@@ -22,8 +23,7 @@ pred_output: /scratch/other/sopi/CCREAIM/datasets/test/out/pred
 save_encoder_output: false
 encoder_output: /scratch/other/sopi/CCREAIM/datasets/test/out/enc
 
-
-# Hyperparameters for training
+# Hyperparameters for testing (needed for loading the correct model)
 model: ae
 seq_length: 1000
 epochs: 10

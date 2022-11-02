@@ -8,6 +8,7 @@ defaults:
     - runs: smoke_test
     #- override hydra/launcher: submitit_slurm
 
+train: true
 
 # Parameters for slurm
 gres: gpu:v100:1

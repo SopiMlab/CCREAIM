@@ -4,7 +4,6 @@ hydra:
 
 defaults:
     - _self_
-
 # Logging
 save_logging: true
 save_model: true
@@ -14,7 +13,8 @@ seed: 0
 exp_name: base
 run_id: 0
 run_suffix: 0
-
+train: false
+test: false
 
 # Parameters for slurm
 gres: gpu:v100:1
@@ -29,12 +29,3 @@ checkpoint: 0
 
 original_data_root: /scratch/other/sopi/CCREAIM/datasets/test/in
 data_root: /scratch/other/sopi/CCREAIM/datasets/test/out
-
-
-# Hyperparameters for training
-model: ae
-seq_length: 1000
-epochs: 10
-batch_size: 8
-learning_rate: 1e-3
-shuffle: true
