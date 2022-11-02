@@ -6,10 +6,10 @@ Hard-coded Decoder and Encoder implementations for specific sized input values
 The signal sequence length of the output of convolutional layers follow these
 equations:
     Conv1d:
-    L_out = floor((L_in​ + 2*padding − dilation*(kernel_size − 1) − 1)/stride ​+ 1)
+    L_out = floor((L_in + 2*padding - dilation*(kernel_size - 1) - 1)/stride + 1)
 
     ConvTranspose1d:
-    L_out = (L_in ​− 1)*stride − 2*padding + dilation*(kernel_size − 1) + output_padding + 1
+    L_out = (L_in - 1)*stride - 2*padding + dilation*(kernel_size - 1) + output_padding + 1
 
 The paddings were decided by trying to keep L_out the same as it was on the original tf implementation.
 For the Decoder, the Encoder's paddings were mirrored and then tuned with the 'output_padding' argument.
@@ -159,12 +159,17 @@ class Decoder(nn.Module):
 class AutoEncoder(nn.Module):
     def __init__(self, encoder, decoder):
         super().__init__()
-        self.net = nn.Sequential(encoder, decoder)
+        self.encoder = encoder
+        self.decoder = decoder
+        self.net = nn.Sequential(self.encoder, self.decoder)
         # TODO parameterise these
         self.loss_fn = nn.MSELoss()
 
     def forward(self, input_data):
         return self.net(input_data)
+
+    def encode(self, input_data):
+        return self.encoder(input_data)
 
 
 def get_autoencoder(name: str):

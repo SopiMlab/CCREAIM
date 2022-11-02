@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 
 import hydra
@@ -26,7 +27,16 @@ def train(
         running_loss = torch.tensor(0.0)
         for batchnum, seq in enumerate(dataloader):
             seq = seq.to(device)
-            pred = model(seq)
+            if isinstance(model, transformer.Transformer):
+                src = seq[:, :-1, :]
+                tgt = seq[:, 1:, :]
+
+                tgt_mask = model.get_tgt_mask(tgt.size(1))
+                pred = model(src, tgt, tgt_mask)
+                seq = tgt
+            else:
+                pred = model(seq)
+
             loss = model.loss_fn(pred, seq)
             running_loss += loss.detach().cpu().item()
             optimizer.zero_grad()
@@ -45,11 +55,11 @@ def train(
 
         if cfg.checkpoint != 0 and epoch % cfg.checkpoint == 0:
             save_path = exp_path / Path(f"{model_name}_ep-{epoch:03d}.pth")
-            torch.save(model.cpu().state_dict(), save_path)
+            torch.save(model.cpu(), save_path)
 
     # Save final model
     final_save_path = exp_path / Path(f"{model_name}_final.pth")
-    torch.save(model.cpu().state_dict(), final_save_path)
+    torch.save(model.cpu(), final_save_path)
 
 
 @hydra.main(version_base=None, config_path="cfg", config_name="train")
@@ -63,11 +73,12 @@ def main(cfg: DictConfig):
         ValueError: if misconfiguration
     """
     print(cfg)
+    run_id = int(time.time())
     if cfg.wandb:
         wandb.init(
             project="ccreaim",
             entity="ccreaim",
-            name=f"{cfg.model}-{cfg.exp_name}-{str(cfg.seed)}-{str(cfg.run_id)}",
+            name=f"{cfg.model}-{cfg.exp_name}-{str(cfg.seed)}-{str(run_id)}",
             group=f"{cfg.model}-{cfg.exp_name}",
             config=cfg,
         )
@@ -82,7 +93,7 @@ def main(cfg: DictConfig):
     elif cfg.model == "vq-vae":
         model = None
     elif cfg.model == "transformer":
-        model = None
+        model = transformer.get_transformer("base")
     elif cfg.model == "end-to-end":
         model = None
     else:
@@ -107,10 +118,12 @@ def main(cfg: DictConfig):
         data = dataset.AudioDataset(data_root_sample_len, cfg.seq_length)
 
     else:
-        if not cfg.data_root.exists():
+        data_root = Path(cfg.data_root) / Path("enc")  # + str(cfg.seq_length)
+
+        if not data_root.exists():
             raise ValueError("Data folder does not exist: " + cfg.data_root)
         # get feature dataset for training
-        data = None
+        data = dataset.FeatureDataset(data_root)
 
     dataloader = torch.utils.data.DataLoader(
         data, batch_size=cfg.batch_size, shuffle=cfg.shuffle, num_workers=2

@@ -13,7 +13,15 @@ defaults:
 gres: gpu:v100:1
 
 # Saved model destination
+model_path: /scratch/other/sopi/CCREAIM/trained_models
 checkpoint: 0
+
+# Data
+save_pred: false
+pred_output: /scratch/other/sopi/CCREAIM/datasets/test/out/pred
+save_encoder_output: false
+encoder_output: /scratch/other/sopi/CCREAIM/datasets/test/out/enc
+
 
 # Hyperparameters for training
 model: ae

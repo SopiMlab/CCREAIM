@@ -1,3 +1,4 @@
+import math
 import random
 from pathlib import Path
 from typing import List
@@ -5,10 +6,6 @@ from typing import List
 import numpy as np
 import torch
 import torchaudio
-from omegaconf import DictConfig
-from torch.utils import data
-
-from utils import dataset
 
 
 def set_seed(seed: int):
@@ -47,3 +44,14 @@ def chop_dataset(in_root: str, out_root: str, ext: str, sample_length: int):
 
 def get_sample_path_list(data_root: Path, ext: str = "mp3") -> List[Path]:
     return list(data_root.rglob(f"*.{ext}"))
+
+
+def conf_same_padding_calc(length: int, stride: int, kernel_size: int):
+    out_length = math.ceil(float(length) / float(stride))
+
+    if length % stride == 0:
+        pad = max(kernel_size - stride, 0)
+    else:
+        pad = max(kernel_size - (length % stride), 0)
+
+    return pad // 2
