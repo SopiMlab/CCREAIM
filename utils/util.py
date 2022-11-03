@@ -1,3 +1,4 @@
+import logging
 import math
 import random
 from pathlib import Path
@@ -8,6 +9,8 @@ import torch
 import torchaudio
 
 from utils import cfg_classes
+
+log = logging.getLogger(__file__)
 
 
 def set_seed(seed: int):
@@ -31,7 +34,12 @@ def chop_sample(sample: torch.Tensor, sample_length: int) -> List[torch.Tensor]:
 def chop_dataset(in_root: str, out_root: str, ext: str, sample_length: int):
     samples_paths = get_sample_path_list(Path(in_root), ext)
     for pth in samples_paths:
-        full_sample, sample_rate = torchaudio.load(str(pth), format=ext)  # type: ignore
+        try:
+            full_sample, sample_rate = torchaudio.load(str(pth), format=ext)  # type: ignore
+        except RuntimeError as e:
+            log.warn(f"Could not open file, with error: {e}")
+            continue
+
         chopped_samples = chop_sample(full_sample.squeeze(), sample_length)
         for i, cs in enumerate(chopped_samples):
             out_path = Path(out_root) / Path(str(pth.stem) + f"_{i:03d}" + ".wav")
