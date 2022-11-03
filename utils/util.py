@@ -6,7 +6,8 @@ from typing import List
 import numpy as np
 import torch
 import torchaudio
-from omegaconf import DictConfig
+
+from utils import cfg_classes
 
 
 def set_seed(seed: int):
@@ -30,11 +31,11 @@ def chop_sample(sample: torch.Tensor, sample_length: int) -> List[torch.Tensor]:
 def chop_dataset(in_root: str, out_root: str, ext: str, sample_length: int):
     samples_paths = get_sample_path_list(Path(in_root), ext)
     for pth in samples_paths:
-        full_sample, sample_rate = torchaudio.load(str(pth), format=ext)
+        full_sample, sample_rate = torchaudio.load(str(pth), format=ext)  # type: ignore
         chopped_samples = chop_sample(full_sample.squeeze(), sample_length)
         for i, cs in enumerate(chopped_samples):
             out_path = Path(out_root) / Path(str(pth.stem) + f"_{i:03d}" + ".wav")
-            torchaudio.save(
+            torchaudio.save(  # type: ignore
                 out_path,
                 cs.unsqueeze(0),
                 sample_rate,
@@ -60,7 +61,7 @@ def conf_same_padding_calc(length: int, stride: int, kernel_size: int):
 
 # Returns the path to the directory where a model is exported to/imported from according
 # to configuration in cfg, as well as the base name of the model.
-def get_model_path(cfg: DictConfig):
-    exp_path = Path(cfg.model_path) / Path(cfg.exp_name)
-    model_name = f"{cfg.model}_seqlen-{cfg.seq_length}_bs-{cfg.batch_size}_lr-{cfg.learning_rate}_seed-{cfg.seed}"
+def get_model_path(cfg: cfg_classes.BaseConfig):
+    exp_path = Path(cfg.logging.model_root) / Path(cfg.logging.exp_name)
+    model_name = f"{cfg.hyper.model}_seqlen-{cfg.hyper.seq_len}_bs-{cfg.hyper.batch_size}_lr-{cfg.hyper.learning_rate}_seed-{cfg.hyper.seed}"
     return exp_path, model_name

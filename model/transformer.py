@@ -106,7 +106,7 @@ class Transformer(nn.Module):
         return mask
 
 
-def get_transformer(name: str):
+def get_transformer(name: str) -> Transformer:
     if name == "base":
         return Transformer(
             dim_model=256,
@@ -115,3 +115,5 @@ def get_transformer(name: str):
             num_decoder_layers=1,
             dropout_p=0.1,
         )
+    else:
+        raise ValueError(f"Transformer model not implemented: {name}")

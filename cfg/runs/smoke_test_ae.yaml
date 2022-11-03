@@ -1,0 +1,26 @@
+# @package _global_
+
+train: false
+
+data:
+  model_path: /scratch/other/sopi/CCREAIM/trained_models/test
+  original_data_root: /scratch/other/sopi/CCREAIM/datasets/test/in
+  data_root: /scratch/other/sopi/CCREAIM/datasets/test/out
+
+hyper:
+  model: ae
+  seed: 0
+  seq_len: 1000
+  epochs: 10
+  batch_size: 8
+  learning_rate: 1e-3
+
+logging:
+  # Saved model destination
+  model_path: /scratch/other/sopi/CCREAIM/trained_models
+  checkpoint: 0
+  # Data
+  save_pred: false
+  pred_output: /scratch/other/sopi/CCREAIM/datasets/test/out/pred
+  save_encoder_output: false
+  encoder_output: /scratch/other/sopi/CCREAIM/datasets/test/out/enc

@@ -1,13 +1,13 @@
-import time
+import logging
 from pathlib import Path
 
-import hydra
 import torch
-from omegaconf import DictConfig
 
 import wandb
 from model import ae, transformer, vae, vqvae
-from utils import dataset, util
+from utils import cfg_classes, dataset, util
+
+log = logging.getLogger(__file__)
 
 
 def train(
@@ -15,14 +15,14 @@ def train(
     dataloader: torch.utils.data.DataLoader,
     optimizer,  # torch optimizer
     device: torch.device,
-    cfg: DictConfig,
+    cfg: cfg_classes.BaseConfig,
 ):
 
     exp_path, model_name = util.get_model_path(cfg)
     exp_path.mkdir(exist_ok=True)
 
     model.train()
-    for epoch in range(cfg.epochs):
+    for epoch in range(cfg.hyper.epochs):
         running_loss = torch.tensor(0.0)
         for batchnum, seq in enumerate(dataloader):
             seq = seq.to(device)
@@ -42,17 +42,17 @@ def train(
             loss.backward()
             optimizer.step()
 
-            if not cfg.silent and batchnum % 100 == 0:
-                print(
-                    f"{epoch + 1:03d}/{cfg.epochs:05d} - {batchnum}/{len(dataloader)} - loss: {loss}"
+            if not cfg.logging.silent and batchnum % 100 == 0:
+                log.info(
+                    f"{epoch + 1:03d}/{cfg.hyper.epochs:05d} - {batchnum}/{len(dataloader)} - loss: {loss}"
                 )
-            if cfg.wandb:
+            if cfg.logging.wandb:
                 wandb.log({"loss": loss})
 
-        if not cfg.silent:
-            print(f"Epoch complete, total loss: {running_loss}")
+        if not cfg.logging.silent:
+            log.info(f"Epoch complete, total loss: {running_loss}")
 
-        if cfg.checkpoint != 0 and epoch % cfg.checkpoint == 0:
+        if cfg.logging.checkpoint != 0 and epoch % cfg.logging.checkpoint == 0:
             save_path = exp_path / Path(f"{model_name}_ep-{epoch:03d}.pth")
             torch.save(model.cpu(), save_path)
 
