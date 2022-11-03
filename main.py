@@ -45,7 +45,7 @@ def main(cfg: cfg_classes.BaseConfig):
     # if training initialize a new model, if testing load an existing trained one
     if cfg.train:
         if cfg.hyper.model == "ae":
-            model = ae.get_autoencoder("base")
+            model = ae.get_autoencoder("base", cfg.hyper.seq_len)
         elif cfg.hyper.model == "vae":
             model = None
         elif cfg.hyper.model == "vq-vae":

@@ -52,7 +52,11 @@ def train(
         if not cfg.logging.silent:
             log.info(f"Epoch complete, total loss: {running_loss}")
 
-        if cfg.logging.checkpoint != 0 and epoch % cfg.logging.checkpoint == 0:
+        if (
+            cfg.logging.checkpoint != 0
+            and epoch % cfg.logging.checkpoint == 0
+            and epoch != 0
+        ):
             save_path = exp_path / Path(f"{model_name}_ep-{epoch:03d}.pth")
             torch.save(model.cpu(), save_path)
 
