@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 
 import torch
+import torch.utils.data
 
 import wandb
 from model import ae, transformer, vae, vqvae
@@ -18,8 +19,8 @@ def train(
     cfg: cfg_classes.BaseConfig,
 ):
 
-    exp_path, model_name = util.get_model_path(cfg)
-    exp_path.mkdir(exist_ok=True)
+    checkpoints_path, model_name = util.get_model_path(cfg)
+    checkpoints_path.mkdir(exist_ok=True)
 
     model.train()
     for epoch in range(cfg.hyper.epochs):
@@ -44,7 +45,7 @@ def train(
 
             if not cfg.logging.silent and batchnum % 100 == 0:
                 log.info(
-                    f"{epoch + 1:03d}/{cfg.hyper.epochs:05d} - {batchnum}/{len(dataloader)} - loss: {loss}"
+                    f"epoch: {epoch + 1:03d}/{cfg.hyper.epochs:05d} - batch: {batchnum}/{len(dataloader)} - loss: {loss}"
                 )
             if cfg.logging.wandb:
                 wandb.log({"loss": loss})
@@ -57,9 +58,9 @@ def train(
             and epoch % cfg.logging.checkpoint == 0
             and epoch != 0
         ):
-            save_path = exp_path / Path(f"{model_name}_ep-{epoch:03d}.pth")
+            save_path = checkpoints_path / Path(f"{model_name}_ep-{epoch:03d}.pth")
             torch.save(model.cpu(), save_path)
 
     # Save final model
-    final_save_path = exp_path / Path(f"{model_name}_final.pth")
+    final_save_path = checkpoints_path / Path(f"{model_name}_final.pth")
     torch.save(model.cpu(), final_save_path)

@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 
 import torch
+import torch.utils.data
 
 import wandb
 from utils import cfg_classes, dataset, util

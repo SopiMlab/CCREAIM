@@ -2,6 +2,9 @@
 # @package _global_
 train: true
 
+logging:
+  exp_name: smoke
+
 data:
   model_path: /scratch/other/sopi/CCREAIM/trained_models/test
   original_data_root: /scratch/other/sopi/CCREAIM/datasets/test/in
@@ -11,6 +14,6 @@ hyper:
   model: ae
   seed: 0
   seq_len: 1000
-  epochs: 10
+  epochs: 2
   batch_size: 8
-  learning_rate: 1e-3
+  learning_rate: 1e-4

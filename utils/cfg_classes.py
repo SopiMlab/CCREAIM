@@ -3,14 +3,13 @@ from dataclasses import dataclass
 
 @dataclass
 class LoggingConfig:
-    save_logging: bool
-    save_model: bool
     wandb: bool
     silent: bool
     exp_name: str
-    run_suffix: int
+    run_id: str
     # Saved model destination
-    model_root: str
+    model_checkpoints: str
+    load_model_path: str
     checkpoint: int
     # Output saving
     save_pred: bool
