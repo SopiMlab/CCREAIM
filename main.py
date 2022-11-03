@@ -39,7 +39,7 @@ def main(cfg: DictConfig):
     # if training initialize a new model, if testing load an existing trained one
     if cfg.train:
         if cfg.model == "ae":
-            model = ae.get_autoencoder("base")
+            model = ae.get_autoencoder("base", cfg.seq_length)
         elif cfg.model == "vae":
             model = None
         elif cfg.model == "vq-vae":
