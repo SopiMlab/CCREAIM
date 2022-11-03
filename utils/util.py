@@ -72,6 +72,6 @@ def conf_same_padding_calc_t(
 # Returns the path to the directory where a model is exported to/imported from according
 # to configuration in cfg, as well as the base name of the model.
 def get_model_path(cfg: cfg_classes.BaseConfig):
-    exp_path = Path(cfg.logging.model_root) / Path(cfg.logging.exp_name)
+    exp_path = Path(cfg.logging.model_checkpoints)
     model_name = f"{cfg.hyper.model}_seqlen-{cfg.hyper.seq_len}_bs-{cfg.hyper.batch_size}_lr-{cfg.hyper.learning_rate}_seed-{cfg.hyper.seed}"
     return exp_path, model_name

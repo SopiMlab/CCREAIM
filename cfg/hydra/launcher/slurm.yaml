@@ -2,11 +2,11 @@ defaults:
   - submitit_slurm
 
 submitit_folder: ${hydra.sweep.dir}/.submitit/%j
-timeout_min: 10
+timeout_min: 300
 cpus_per_task: null
 gpus_per_node: null
 tasks_per_node: 1
-mem_gb: null
+mem_gb: 8
 nodes: 1
 name: ${hydra.job.name}
 

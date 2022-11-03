@@ -1,10 +1,10 @@
 import logging
-import time
 from pathlib import Path
 
 import hydra
 import submitit
 import torch
+import torch.utils.data
 from hydra.core.config_store import ConfigStore
 from omegaconf import OmegaConf
 
@@ -27,14 +27,15 @@ def main(cfg: cfg_classes.BaseConfig):
     Raises:
         ValueError: if misconfiguration
     """
-    log.info(OmegaConf.to_yaml(cfg))
     env = submitit.JobEnvironment()
-    run_id = int(time.time())
+
+    log.info(OmegaConf.to_yaml(cfg))
+
     if cfg.logging.wandb:
         wandb.init(
             project="ccreaim",
             entity="ccreaim",
-            name=f"{cfg.hyper.model}-{cfg.logging.exp_name}-{str(cfg.hyper.seed)}-{str(run_id)}",
+            name=f"{cfg.hyper.model}-{cfg.logging.exp_name}-{str(cfg.hyper.seed)}-{cfg.logging.run_id}",
             group=f"{cfg.hyper.model}-{cfg.logging.exp_name}",
             config=cfg,
         )
@@ -57,11 +58,7 @@ def main(cfg: cfg_classes.BaseConfig):
         else:
             raise ValueError(f"Model type {cfg.hyper.model} is not defined!")
     else:
-        # Load an existing model if testing
-        # TODO: instead of always loading _final.pth, load {model_name}_{cfg.some_name_for_training_suffix}?
-        #       Or maybe too convoluted?
-        exp_path, model_name = util.get_model_path(cfg)
-        model = torch.load(exp_path / f"{model_name}_final.pth")
+        model = torch.load(cfg.logging.load_model_path)
 
     # Get the dataset, use audio data for any non-transformer model,
     # feature data for transformers
@@ -69,7 +66,6 @@ def main(cfg: cfg_classes.BaseConfig):
         data_root_sample_len = Path(cfg.data.data_root) / Path(
             "chopped_" + str(cfg.hyper.seq_len)
         )
-
         if not data_root_sample_len.exists():
             log.info(
                 "Creating new chopped dataset with sample length: "
@@ -82,7 +78,6 @@ def main(cfg: cfg_classes.BaseConfig):
                 "mp3",
                 cfg.hyper.seq_len,
             )
-
         # Sound dataset. Return name if testing
         data = dataset.AudioDataset(
             data_root_sample_len, cfg.hyper.seq_len, return_name=not cfg.train
@@ -90,7 +85,6 @@ def main(cfg: cfg_classes.BaseConfig):
 
     else:
         data_root = Path(cfg.data.data_root) / Path("enc")  # + str(cfg.seq_length)
-
         if not data_root.exists():
             raise ValueError("Data folder does not exist: " + cfg.data.data_root)
         # Feature dataset

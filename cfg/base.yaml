@@ -1,27 +1,26 @@
 hydra:
   run:
-    dir: /scratch/other/sopi/CCREAIM/logs/hydra_output/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}
+    dir: /scratch/other/sopi/CCREAIM/logs/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}
   sweep:
-    dir: /scratch/other/sopi/CCREAIM/logs/hydra_output/multirun/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    dir: /scratch/other/sopi/CCREAIM/logs/multirun/${now:%Y-%m-%d}/${now:%H-%M-%S}
     subdir: ${hydra.job.num}
   mode: MULTIRUN
 
 defaults:
   - _self_
   - runs: ???
-  - override hydra/launcher: ext_submitit_local
+  - override hydra/launcher: local
 
 # Logging
 logging:
-  save_logging: true
-  save_model: true
   wandb: true
   silent: false
-  exp_name: base
-  run_suffix: 0
+  exp_name: ???
+  run_id: ${now:%Y-%m-%d}-${now:%H-%M-%S}-${hydra:job.num}
   # Saved model destination
-  model_root: /scratch/other/sopi/CCREAIM/trained_models
-  checkpoint: 0
+  model_checkpoints: ${hydra:sweep.dir}/${hydra:sweep.subdir}/checkpoints
+  load_model_path: ???
+  checkpoint: 5
   # Output saving
   save_pred: false
   pred_output: /scratch/other/sopi/CCREAIM/datasets/test/out/pred
