@@ -3,6 +3,7 @@ from pathlib import Path
 
 import torch
 import torch.utils.data
+import torchaudio
 
 import wandb
 from utils import cfg_classes, dataset, util
@@ -27,9 +28,14 @@ def test(
             loss = model.loss_fn(pred, seq)
 
             if cfg.logging.save_pred:
-                for s, n in zip(seq, name):
+                for p, n in zip(pred, name):
                     save_path = Path(cfg.logging.pred_output) / Path(n).name
-                    torch.save(s, save_path)
+                    if cfg.hyper.model == "transformer":
+                        torch.save(p, save_path)
+                    else:
+                        torchaudio.save(
+                            save_path, p, 16000, encoding="PCM_F", bits_per_sample=32
+                        )
 
             if cfg.logging.save_encoder_output:
                 feat = model.encode(seq)
