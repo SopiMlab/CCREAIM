@@ -48,7 +48,7 @@ def main(cfg: cfg_classes.BaseConfig):
         if cfg.hyper.model == "ae":
             model = ae.get_autoencoder("base", cfg.hyper.seq_len)
         elif cfg.hyper.model == "vae":
-            model = None
+            model = vae.get_vae("base", cfg.hyper.seq_len)
         elif cfg.hyper.model == "vq-vae":
             model = None
         elif cfg.hyper.model == "transformer":

@@ -10,7 +10,7 @@ data:
   data_root: /scratch/other/sopi/CCREAIM/datasets/test/out
 
 hyper:
-  model: ae
+  model: vae
   seed: 0
   seq_len: 1000
   epochs: 2

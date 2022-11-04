@@ -1,3 +1,5 @@
+import logging
+
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -20,8 +22,8 @@ class VAE(nn.Module):
 
     def loss_fn(
         self,
-        data: torch.Tensor,
         pred: torch.Tensor,
+        data: torch.Tensor,
         mu: torch.Tensor,
         sigma: torch.Tensor,
         kld_weight: float = 1.0,
@@ -32,28 +34,28 @@ class VAE(nn.Module):
 
 
 class Reparametrization(nn.Module):
-    def __init__(self, enc_dec_dim: int, latent_dim: int):
+    def __init__(self, in_out_len: int, latent_dim: int):
         super().__init__()
         self.latent_dim = latent_dim
-        self.enc_dec_dim = enc_dec_dim
-        self.fc_mu = nn.Linear(self.enc_dec_dim, self.latent_dim)
-        self.fc_sig = nn.Linear(self.enc_dec_dim, self.latent_dim)
-        self.fc_z = nn.Linear(self.latent_dim, self.enc_dec_dim)
+        self.in_out_len = in_out_len
+        self.fc_mu = nn.Linear(self.in_out_len * latent_dim, self.latent_dim)
+        self.fc_sig = nn.Linear(self.in_out_len * latent_dim, self.latent_dim)
+        self.fc_z = nn.Linear(self.latent_dim, self.in_out_len * latent_dim)
 
     def forward(self, data: torch.Tensor):
         flat_data = data.flatten(start_dim=1)
         mu = self.fc_mu(flat_data)
         log_sigma = self.fc_sig(flat_data)
         sigma = torch.exp(log_sigma)
-        samp = torch.normal(mu, sigma, mu.size())
-        z = self.fc_z(samp)
+        sample = torch.normal(mu, sigma)
+        z = self.fc_z(sample).view(-1, self.latent_dim, self.in_out_len)
         return z, mu, sigma
 
 
 def _create_vae(seq_length: int):
     encoder = ae.Encoder(seq_length)
     decoder = ae.Decoder(seq_length, encoder.output_lengths)
-    reparam = Reparametrization(encoder.output_lengths[-1] * 256, 256)
+    reparam = Reparametrization(encoder.output_lengths[-1], 256)
     return VAE(encoder, decoder, reparam)
 
 

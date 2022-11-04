@@ -30,14 +30,16 @@ def train(
             if isinstance(model, transformer.Transformer):
                 src = seq[:, :-1, :]
                 tgt = seq[:, 1:, :]
-
                 tgt_mask = model.get_tgt_mask(tgt.size(1))
                 pred = model(src, tgt, tgt_mask)
-                seq = tgt
+                loss = model.loss_fn(pred, tgt)
+            elif isinstance(model, vae.VAE):
+                pred, mu, sigma = model(seq)
+                loss = model.loss_fn(pred, seq, mu, sigma)
             else:
                 pred = model(seq)
+                loss = model.loss_fn(pred, seq)
 
-            loss = model.loss_fn(pred, seq)
             running_loss += loss.detach().cpu().item()
             optimizer.zero_grad()
             loss.backward()
