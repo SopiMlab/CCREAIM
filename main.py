@@ -58,7 +58,8 @@ def main(cfg: cfg_classes.BaseConfig):
         else:
             raise ValueError(f"Model type {cfg.hyper.model} is not defined!")
     else:
-        model = torch.load(cfg.logging.load_model_path)
+        checkpoint = torch.load(cfg.logging.load_model_path)
+        model = checkpoint["model"]
 
     # Get the dataset, use audio data for any non-transformer model,
     # feature data for transformers

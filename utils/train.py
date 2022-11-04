@@ -23,7 +23,7 @@ def train(
     checkpoints_path.mkdir(exist_ok=True)
 
     model.train()
-    for epoch in range(cfg.hyper.epochs):
+    for epoch in range(1, cfg.hyper.epochs + 1):
         running_loss = torch.tensor(0.0)
         for batchnum, seq in enumerate(dataloader):
             seq = seq.to(device)
@@ -47,22 +47,36 @@ def train(
 
             if not cfg.logging.silent and batchnum % 100 == 0:
                 log.info(
-                    f"epoch: {epoch + 1:03d}/{cfg.hyper.epochs:05d} - batch: {batchnum}/{len(dataloader)} - loss: {loss}"
+                    f"epoch: {epoch:03d}/{cfg.hyper.epochs:03d} - batch: {batchnum:05d}/{len(dataloader):05d} - loss: {loss}"
                 )
             if cfg.logging.wandb:
                 wandb.log({"loss": loss})
 
         if not cfg.logging.silent:
-            log.info(f"Epoch complete, total loss: {running_loss}")
+            log.info(f"Epoch {epoch} complete, total loss: {running_loss}")
 
-        if (
-            cfg.logging.checkpoint != 0
-            and epoch % cfg.logging.checkpoint == 0
-            and epoch != 0
-        ):
+        if cfg.logging.checkpoint != 0 and epoch % cfg.logging.checkpoint == 0:
             save_path = checkpoints_path / Path(f"{model_name}_ep-{epoch:03d}.pth")
-            torch.save(model.cpu(), save_path)
+            torch.save(
+                {
+                    "epoch": epoch,
+                    "model": model,
+                    "model_state_dict": model.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "loss": running_loss,
+                },
+                save_path,
+            )
 
     # Save final model
     final_save_path = checkpoints_path / Path(f"{model_name}_final.pth")
-    torch.save(model.cpu(), final_save_path)
+    torch.save(
+        {
+            "epoch": cfg.hyper.epochs,
+            "model": model,
+            "model_state_dict": model.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+            "loss": 0,
+        },
+        final_save_path,
+    )
