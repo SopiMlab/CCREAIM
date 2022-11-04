@@ -85,7 +85,7 @@ def main(cfg: cfg_classes.BaseConfig):
         )
 
     else:
-        data_root = Path(cfg.data.data_root) / Path("enc")  # + str(cfg.seq_length)
+        data_root = Path(cfg.data.data_root)
         if not data_root.exists():
             raise ValueError("Data folder does not exist: " + cfg.data.data_root)
         # Feature dataset

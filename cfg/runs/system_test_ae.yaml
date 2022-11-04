@@ -3,7 +3,6 @@
 train: false
 
 data:
-  model_path: /scratch/other/sopi/CCREAIM/trained_models/test
   original_data_root: /scratch/other/sopi/CCREAIM/datasets/test/in
   data_root: /scratch/other/sopi/CCREAIM/datasets/test/out
 

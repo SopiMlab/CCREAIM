@@ -42,7 +42,7 @@ class FeatureDataset(data.Dataset):
         self.sample_path_list = util.get_sample_path_list(self.data_root, self.ext)
 
     def __getitem__(self, index: int) -> Union[torch.Tensor, tuple[torch.Tensor, str]]:
-        feature = torch.load(str(self.sample_path_list[index]))
+        feature = torch.load(str(self.sample_path_list[index]), map_location="cpu")
         if not self.return_name:
             return feature.squeeze().T
         else:
