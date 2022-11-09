@@ -1,0 +1,46 @@
+hydra:
+  run:
+    dir: /scratch/other/sopi/CCREAIM/logs/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}
+  sweep:
+    dir: /scratch/other/sopi/CCREAIM/logs/multirun/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    subdir: ${hydra.job.num}
+  mode: MULTIRUN
+
+defaults:
+  - _self_
+  - runs: ???
+  - override hydra/launcher: local
+
+# Logging
+logging:
+  wandb: true
+  silent: false
+  exp_name: ???
+  run_id: ${now:%Y-%m-%d}-${now:%H-%M-%S}-${hydra:job.num}
+  # Saved model destination
+  model_checkpoints: ${hydra:sweep.dir}/${hydra:sweep.subdir}/checkpoints
+  load_model_path: ???
+  checkpoint: 5
+  # Output saving
+  save_pred: false
+  pred_output: /scratch/other/sopi/CCREAIM/datasets/test/out/pred
+  save_encoder_output: false
+  encoder_output: /scratch/other/sopi/CCREAIM/datasets/test/out/enc
+
+train: ???
+
+data:
+  original_data_root: /scratch/other/sopi/CCREAIM/datasets/magna-tag-a-tune
+  data_root: /scratch/other/sopi/CCREAIM/datasets
+  shuffle: true
+
+# Parameters for slurm
+
+# Hyperparameters for runs (needed for loading the correct model)
+hyper:
+  seed: ???
+  model: ???
+  seq_len: ???
+  epochs: ???
+  batch_size: ???
+  learning_rate: ???

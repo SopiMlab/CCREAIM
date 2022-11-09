@@ -29,16 +29,16 @@ class PositionalEncoding(nn.Module):
         pos_encoding[:, 1::2] = torch.cos(positions_list * division_term)
 
         # Saving buffer (same as parameter without gradients needed)
-        pos_encoding = pos_encoding.unsqueeze(0).transpose(0, 1)
+        pos_encoding = pos_encoding.unsqueeze(0)
         self.register_buffer("pos_encoding", pos_encoding)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Args:
-            x: Tensor, shape [seq_len, batch_size, embedding_dim]
+            x: Tensor, shape [batch_size, seq_len, embedding_dim]
         """
         # Residual connection + pos encoding
-        return self.dropout(x + self.pos_encoding[: x.size(0), :])
+        return self.dropout(x + self.pos_encoding[:, : x.size(1), :])
 
 
 class Transformer(nn.Module):
@@ -71,13 +71,13 @@ class Transformer(nn.Module):
             batch_first=True,
         )
 
+        self.loss_fn = nn.MSELoss()
+
     def forward(
         self,
         src: torch.Tensor,
         tgt: torch.Tensor,
         tgt_mask: torch.Tensor = None,
-        src_pad_mask: torch.Tensor = None,
-        tgt_pad_mask=None,
     ):
         # Src size must be (batch_size, src sequence length)
         # Tgt size must be (batch_size, tgt sequence length)
@@ -86,13 +86,13 @@ class Transformer(nn.Module):
         src = self.positional_encoder(src)
         tgt = self.positional_encoder(tgt)
 
-        # Transformer blocks - Out size = (sequence length, batch_size, num_tokens)
+        # Transformer blocks - Out size = (batch_size, sequence length, num_tokens)
         out = self.transformer(
             src,
             tgt,
             tgt_mask=tgt_mask,
-            src_key_padding_mask=src_pad_mask,
-            tgt_key_padding_mask=tgt_pad_mask,
+            # src_key_padding_mask=src_pad_mask,
+            # tgt_key_padding_mask=tgt_pad_mask,
         )
 
         return out
@@ -106,12 +106,14 @@ class Transformer(nn.Module):
         return mask
 
 
-def get_transformer(name: str):
+def get_transformer(name: str) -> Transformer:
     if name == "base":
         return Transformer(
-            dim_model=200,
+            dim_model=256,
             num_heads=8,
             num_encoder_layers=1,
             num_decoder_layers=1,
             dropout_p=0.1,
         )
+    else:
+        raise ValueError(f"Transformer model not implemented: {name}")

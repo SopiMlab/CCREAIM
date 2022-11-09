@@ -1,157 +1,274 @@
 from torch import nn
 
+from utils import util
+
 """
-Hard-coded Decoder and Encoder implementations for specific sized input values
-
-The signal sequence length of the output of convolutional layers follow these
-equations:
-    Conv1d:
-    L_out = floor((L_in​ + 2*padding − dilation*(kernel_size − 1) − 1)/stride ​+ 1)
-
-    ConvTranspose1d:
-    L_out = (L_in ​− 1)*stride − 2*padding + dilation*(kernel_size − 1) + output_padding + 1
-
-The paddings were decided by trying to keep L_out the same as it was on the original tf implementation.
-For the Decoder, the Encoder's paddings were mirrored and then tuned with the 'output_padding' argument.
+Semi-hardcoded AutoEncoder implementation
 
 Possible TODOs:
 - Make more hardcoded models
 AND/OR
-- Parametrize as much as possible:
-    - calculate the required paddings automatically
-    - configurable model structures
+- configurable model structures
 """
+
+# Returns an nn.Conv1d layer according to given parameters, with proper padding calculated for
+# output_length to be ceil(input_length/stride)
+def create_conv1d_layer(
+    input_channels: int,
+    output_channels: int,
+    kernel_size: int,
+    stride: int,
+    input_length: int,
+):
+    padding, length_out = util.conf_same_padding_calc(input_length, stride, kernel_size)
+    return (
+        nn.Conv1d(
+            input_channels, output_channels, kernel_size, stride=stride, padding=padding
+        ),
+        length_out,
+    )
 
 
 class Encoder(nn.Module):
-    def __init__(self):
+    def __init__(self, seq_length):
         super().__init__()
+
+        # Latent space dimension
+        latent_dim = 256
+
         # The negative slope coefficient for leaky ReLU
         leaky_relu_alpha = 0.2
-        latent_dim = 128
-        # [input shape = (1, 1, 1000)]
-        # First layer [output shape = (1, 64, 1000)]
-        self.conv1 = nn.Conv1d(1, 64, 7, padding=3)
+
+        # Record the output lengths of the layers for decoder
+        self.output_lengths = []
+
+        # First layer
+        self.conv1, len_out = create_conv1d_layer(
+            input_channels=1,
+            output_channels=64,
+            kernel_size=7,
+            stride=1,
+            input_length=seq_length,
+        )
         self.b_norm1 = nn.BatchNorm1d(64)
         self.relu1 = nn.LeakyReLU(leaky_relu_alpha)
+        self.output_lengths.append(len_out)
 
-        # Second layer [output shape = (1, 128, 500)]
-        self.conv2 = nn.Conv1d(64, 128, 5, stride=2, padding=2)
+        # Second layer
+        self.conv2, len_out = create_conv1d_layer(
+            input_channels=64,
+            output_channels=128,
+            kernel_size=5,
+            stride=2,
+            input_length=len_out,
+        )
         self.b_norm2 = nn.BatchNorm1d(128)
         self.relu2 = nn.LeakyReLU(leaky_relu_alpha)
+        self.output_lengths.append(len_out)
 
-        # Third layer [output shape = (1, 256, 125)]
-        self.conv3 = nn.Conv1d(128, 256, 9, stride=4, padding=3)
+        # Third layer
+        self.conv3, len_out = create_conv1d_layer(
+            input_channels=128,
+            output_channels=256,
+            kernel_size=9,
+            stride=4,
+            input_length=len_out,
+        )
         self.b_norm3 = nn.BatchNorm1d(256)
         self.relu3 = nn.LeakyReLU(leaky_relu_alpha)
+        self.output_lengths.append(len_out)
 
-        # Fourth layer [output shape = (1, 512, 32)]
-        self.conv4 = nn.Conv1d(256, 512, 9, stride=4, padding=4)
+        # Fourth layer
+        self.conv4, len_out = create_conv1d_layer(
+            input_channels=256,
+            output_channels=512,
+            kernel_size=9,
+            stride=4,
+            input_length=len_out,
+        )
         self.b_norm4 = nn.BatchNorm1d(512)
         self.relu4 = nn.LeakyReLU(leaky_relu_alpha)
+        self.output_lengths.append(len_out)
 
-        # Fifth layer [output shape = (1, 1024, 8)]
-        self.conv5 = nn.Conv1d(512, 1024, 9, stride=4, padding=3)
+        # Fifth layer
+        self.conv5, len_out = create_conv1d_layer(
+            input_channels=512,
+            output_channels=1024,
+            kernel_size=9,
+            stride=4,
+            input_length=len_out,
+        )
         self.relu5 = nn.LeakyReLU(leaky_relu_alpha)
+        self.output_lengths.append(len_out)
 
-        # Final layer [output shape = (1, latent_dim*2, 8)]
-        self.conv6 = nn.Conv1d(1024, latent_dim * 2, 5, padding=2)
+        # Final layer
+        self.conv6, len_out = create_conv1d_layer(
+            input_channels=1024,
+            output_channels=latent_dim,
+            kernel_size=5,
+            stride=1,
+            input_length=len_out,
+        )
+        self.output_lengths.append(len_out)
 
     def forward(self, data):
-        # print("input data shape: {}".format(data.size()))
 
         data = self.conv1(data)
         data = self.b_norm1(data)
         data = self.relu1(data)
-        # print("data shape after layer 1: {}".format(data.size()))
 
         data = self.conv2(data)
         data = self.b_norm2(data)
         data = self.relu2(data)
-        # print("data shape after layer 2: {}".format(data.size()))
 
         data = self.conv3(data)
         data = self.b_norm3(data)
         data = self.relu3(data)
-        # print("data shape after layer 3: {}".format(data.size()))
 
         data = self.conv4(data)
         data = self.b_norm4(data)
         data = self.relu4(data)
-        # print("data shape after layer 4: {}".format(data.size()))
 
         data = self.conv5(data)
         data = self.relu5(data)
-        # print("data shape after layer 5: {}".format(data.size()))
 
         data = self.conv6(data)
-        # print("data shape after layer 6: {}".format(data.size()))
 
         return data
 
 
+# Creates an nn.ConvTranspose1d layer according to given parameters, where a the correct
+# padding and output_padding is used for a given input_length => output_length mapping
+def create_convtranspose1d_layer(
+    input_channels: int,
+    output_channels: int,
+    kernel_size: int,
+    stride: int,
+    input_length: int,
+    output_length: int,
+):
+    padding, output_padding = util.conf_same_padding_calc_t(
+        input_length, output_length, stride, kernel_size
+    )
+    return nn.ConvTranspose1d(
+        input_channels,
+        output_channels,
+        kernel_size,
+        stride=stride,
+        padding=padding,
+        output_padding=output_padding,
+    )
+
+
 class Decoder(nn.Module):
-    def __init__(self):
+    def __init__(self, seq_length, output_lengths):
         super().__init__()
+
+        # Latent space dimension
+        latent_dim = 256
+
         # The negative slope coefficient for leaky ReLU
         leaky_relu_alpha = 0.2
-        latent_dim = 128
 
-        # [latent shape = (1, latent_dim*2, 8)]
-        # First layer [output shape = (1, 1024, 8)]
-        self.conv6 = nn.ConvTranspose1d(latent_dim * 2, 1024, 5, padding=2)
+        # Output lengths for getting correct paddings
+        # that reflect the encoder's sequence lengths
+        len_outputs = output_lengths.copy()
+
+        # First layer
+        len_in = len_outputs.pop()
+        len_out = len_outputs.pop()
+        self.conv6 = create_convtranspose1d_layer(
+            input_channels=latent_dim,
+            output_channels=1024,
+            kernel_size=5,
+            stride=1,
+            input_length=len_in,
+            output_length=len_out,
+        )
         self.relu5 = nn.LeakyReLU(leaky_relu_alpha)
 
-        # Second layer [output shape = (1, 512, 32)]
-        self.conv5 = nn.ConvTranspose1d(
-            1024, 512, 9, stride=4, padding=3, output_padding=1
+        # Second layer
+        len_in = len_out
+        len_out = len_outputs.pop()
+        self.conv5 = create_convtranspose1d_layer(
+            input_channels=1024,
+            output_channels=512,
+            kernel_size=9,
+            stride=4,
+            input_length=len_in,
+            output_length=len_out,
         )
         self.relu4 = nn.LeakyReLU(leaky_relu_alpha)
 
-        # Third layer [output shape = (1, 256, 125)]
-        self.conv4 = nn.ConvTranspose1d(512, 256, 9, stride=4, padding=4)
+        # Third layer
+        len_in = len_out
+        len_out = len_outputs.pop()
+        self.conv4 = create_convtranspose1d_layer(
+            input_channels=512,
+            output_channels=256,
+            kernel_size=9,
+            stride=4,
+            input_length=len_in,
+            output_length=len_out,
+        )
         self.relu3 = nn.LeakyReLU(leaky_relu_alpha)
 
-        # Fourth layer [output shape = (1, 128, 500)]
-        self.conv3 = nn.ConvTranspose1d(
-            256, 128, 9, stride=4, padding=3, output_padding=1
+        # Fourth layer
+        len_in = len_out
+        len_out = len_outputs.pop()
+        self.conv3 = create_convtranspose1d_layer(
+            input_channels=256,
+            output_channels=128,
+            kernel_size=9,
+            stride=4,
+            input_length=len_in,
+            output_length=len_out,
         )
         self.relu2 = nn.LeakyReLU(leaky_relu_alpha)
 
-        # Fifth layer [output shape = (1, 64, 1000)]
-        self.conv2 = nn.ConvTranspose1d(
-            128, 64, 5, stride=2, padding=2, output_padding=1
-        )
+        # Fifth layer
+        len_in = len_out
+        len_out = len_outputs.pop()
         self.relu1 = nn.LeakyReLU(leaky_relu_alpha)
+        self.conv2 = create_convtranspose1d_layer(
+            input_channels=128,
+            output_channels=64,
+            kernel_size=5,
+            stride=2,
+            input_length=len_in,
+            output_length=len_out,
+        )
 
-        # Final layer [output shape = (1, 1, 1000)]
-        self.conv1 = nn.ConvTranspose1d(64, 1, 7, padding=3)
+        # Final layer
+        len_in = len_out
+        len_out = seq_length
+        self.conv1 = create_convtranspose1d_layer(
+            input_channels=64,
+            output_channels=1,
+            kernel_size=7,
+            stride=1,
+            input_length=len_in,
+            output_length=len_out,
+        )
 
     def forward(self, data):
-        # print("latent data shape: {}".format(data.size()))
 
         data = self.conv6(data)
         data = self.relu5(data)
-        # print("data shape after layer 1: {}".format(data.size()))
 
         data = self.conv5(data)
         data = self.relu4(data)
-        # print("data shape after layer 2: {}".format(data.size()))
 
         data = self.conv4(data)
         data = self.relu3(data)
-        # print("data shape after layer 3: {}".format(data.size()))
 
         data = self.conv3(data)
         data = self.relu2(data)
-        # print("data shape after layer 4: {}".format(data.size()))
 
         data = self.conv2(data)
         data = self.relu1(data)
-        # print("data shape after layer 5: {}".format(data.size()))
 
         data = self.conv1(data)
-        # print("data shape after layer 6: {}".format(data.size()))
 
         return data
 
@@ -159,16 +276,27 @@ class Decoder(nn.Module):
 class AutoEncoder(nn.Module):
     def __init__(self, encoder, decoder):
         super().__init__()
-        self.net = nn.Sequential(encoder, decoder)
+        self.encoder = encoder
+        self.decoder = decoder
+        self.net = nn.Sequential(self.encoder, self.decoder)
         # TODO parameterise these
         self.loss_fn = nn.MSELoss()
 
     def forward(self, input_data):
         return self.net(input_data)
 
+    def encode(self, input_data):
+        return self.encoder(input_data)
 
-def get_autoencoder(name: str):
+
+def _create_autoencoder(seq_length):
+    encoder = Encoder(seq_length)
+    decoder = Decoder(seq_length, encoder.output_lengths)
+    return AutoEncoder(encoder, decoder)
+
+
+def get_autoencoder(name: str, seq_length: int):
     if name == "base":
-        return AutoEncoder(Encoder(), Decoder())
+        return _create_autoencoder(seq_length)
     else:
         raise ValueError("Unknown autoencoder name: '{}'".format(name))

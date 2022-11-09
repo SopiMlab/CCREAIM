@@ -1,3 +1,5 @@
+import logging
+import math
 import random
 from pathlib import Path
 from typing import List
@@ -5,10 +7,10 @@ from typing import List
 import numpy as np
 import torch
 import torchaudio
-from omegaconf import DictConfig
-from torch.utils import data
 
-from utils import dataset
+from utils import cfg_classes
+
+log = logging.getLogger(__file__)
 
 
 def set_seed(seed: int):
@@ -32,11 +34,16 @@ def chop_sample(sample: torch.Tensor, sample_length: int) -> List[torch.Tensor]:
 def chop_dataset(in_root: str, out_root: str, ext: str, sample_length: int):
     samples_paths = get_sample_path_list(Path(in_root), ext)
     for pth in samples_paths:
-        full_sample, sample_rate = torchaudio.load(str(pth), format=ext)
+        try:
+            full_sample, sample_rate = torchaudio.load(str(pth), format=ext)  # type: ignore
+        except RuntimeError as e:
+            log.warn(f"Could not open file, with error: {e}")
+            continue
+
         chopped_samples = chop_sample(full_sample.squeeze(), sample_length)
         for i, cs in enumerate(chopped_samples):
             out_path = Path(out_root) / Path(str(pth.stem) + f"_{i:03d}" + ".wav")
-            torchaudio.save(
+            torchaudio.save(  # type: ignore
                 out_path,
                 cs.unsqueeze(0),
                 sample_rate,
@@ -47,3 +54,32 @@ def chop_dataset(in_root: str, out_root: str, ext: str, sample_length: int):
 
 def get_sample_path_list(data_root: Path, ext: str = "mp3") -> List[Path]:
     return list(data_root.rglob(f"*.{ext}"))
+
+
+# Calculates padding for nn.Conv1d-layers to achieve l_out=ceil(l_in/stride)
+def conf_same_padding_calc(length: int, stride: int, kernel_size: int):
+    out_length = math.ceil(float(length) / float(stride))
+
+    if length % stride == 0:
+        pad = max(kernel_size - stride, 0)
+    else:
+        pad = max(kernel_size - (length % stride), 0)
+
+    return math.ceil(pad / 2), out_length
+
+
+# Calculates padding and output_padding for nn.ConvTranspose1d to get preferred length_out with minimal output_padding
+def conf_same_padding_calc_t(
+    length_in: int, length_out: int, stride: int, kernel_size: int
+):
+    padding = math.ceil(((length_in - 1) * stride - length_out + kernel_size) / 2)
+    output_padding = length_out - ((length_in - 1) * stride - 2 * padding + kernel_size)
+    return padding, output_padding
+
+
+# Returns the path to the directory where a model is exported to/imported from according
+# to configuration in cfg, as well as the base name of the model.
+def get_model_path(cfg: cfg_classes.BaseConfig):
+    exp_path = Path(cfg.logging.model_checkpoints)
+    model_name = f"{cfg.hyper.model}_seqlen-{cfg.hyper.seq_len}_bs-{cfg.hyper.batch_size}_lr-{cfg.hyper.learning_rate}_seed-{cfg.hyper.seed}"
+    return exp_path, model_name
