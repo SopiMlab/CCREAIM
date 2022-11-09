@@ -31,6 +31,7 @@ def train(
                 src = seq[:, :-1, :]
                 tgt = seq[:, 1:, :]
                 tgt_mask = model.get_tgt_mask(tgt.size(1))
+                tgt_mask = tgt_mask.to(device)
                 pred = model(src, tgt, tgt_mask)
                 loss = model.loss_fn(pred, tgt)
             elif isinstance(model, vae.VAE):
