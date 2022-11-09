@@ -2,10 +2,10 @@ defaults:
   - submitit_local
 
 submitit_folder: ${hydra.sweep.dir}/.submitit/%j
-timeout_min: 60
-cpus_per_task: 1
-gpus_per_node: 0
-tasks_per_node: 1
-mem_gb: 4
-nodes: 1
+timeout_min: ${resources.timeout_min}
+cpus_per_task: ${resources.cpus_per_task}
+gpus_per_node: ${resources.gpus_per_node}
+tasks_per_node: ${resources.tasks_per_node}
+mem_gb: ${resources.mem_gb}
+nodes: ${resources.nodes}
 name: ${hydra.job.name}

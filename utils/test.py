@@ -40,7 +40,7 @@ def test(
                 feat = model.encode(seq)  # type: ignore
                 for f, n in zip(feat, name):
                     save_path = Path(cfg.logging.encoder_output) / Path(n).stem
-                    torch.save(f, str(save_path) + ".pth")
+                    torch.save(f.clone(), str(save_path) + ".pt")
 
             running_loss += loss.detach().cpu().item()
 

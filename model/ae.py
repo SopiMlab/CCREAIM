@@ -280,7 +280,7 @@ class AutoEncoder(nn.Module):
         return self.encoder(input_data)
 
 
-def _create_autoencoder(seq_length, latent_dim):
+def _create_autoencoder(seq_length: int, latent_dim: int):
     encoder = Encoder(seq_length, latent_dim)
     decoder = Decoder(seq_length, latent_dim, encoder.output_lengths)
     return AutoEncoder(encoder, decoder)

@@ -19,7 +19,7 @@ logging:
   exp_name: system-test
   load_model_path: /home/baffyb1/CCREAIM/CCREAIM/logs/multirun/2022-11-03/17-06-04/0/checkpoints/ae_seqlen-65536_bs-8_lr-1e-05_seed-0_ep-005.pth
   # Data
-  save_pred: true
+  save_pred: false
   pred_output: /scratch/other/sopi/CCREAIM/datasets/test/out/pred_system
   save_encoder_output: false
   encoder_output: /scratch/other/sopi/CCREAIM/datasets/test/out/enc

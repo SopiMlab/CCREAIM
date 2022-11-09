@@ -3,10 +3,11 @@ import logging
 from pathlib import Path
 
 import hydra
-import submitit
 import torch
 import torch.utils.data
 from hydra.core.config_store import ConfigStore
+from hydra.core.utils import JobReturn, JobStatus
+from hydra.experimental.callback import Callback
 from omegaconf import OmegaConf
 
 import wandb
@@ -16,6 +17,21 @@ from utils.test import test
 from utils.train import train
 
 log = logging.getLogger(__name__)
+
+
+class LogJobReturnCallback(Callback):
+    def __init__(self) -> None:
+        self.log = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+
+    def on_job_end(
+        self, config: cfg_classes.BaseConfig, job_return: JobReturn, **kwargs
+    ) -> None:
+        if job_return.status == JobStatus.COMPLETED:
+            self.log.info(f"Succeeded with return value: {job_return.return_value}")
+        elif job_return.status == JobStatus.FAILED:
+            self.log.error("", exc_info=job_return._return_value)
+        else:
+            self.log.error("Status unknown. This should never happen.")
 
 
 @hydra.main(version_base=None, config_path="cfg", config_name="base")
@@ -28,7 +44,6 @@ def main(cfg: cfg_classes.BaseConfig):
     Raises:
         ValueError: if misconfiguration
     """
-    env = submitit.JobEnvironment()
     log.info(OmegaConf.to_yaml(cfg))
 
     if cfg.logging.wandb:
@@ -93,7 +108,7 @@ def main(cfg: cfg_classes.BaseConfig):
 
     # Make a dataloader
     dataloader = torch.utils.data.DataLoader(
-        data, batch_size=cfg.hyper.batch_size, shuffle=cfg.data.shuffle, num_workers=2
+        data, batch_size=cfg.hyper.batch_size, shuffle=cfg.data.shuffle, num_workers=1
     )
 
     # Use gpu if available, move the model to device

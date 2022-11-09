@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass
@@ -23,6 +24,30 @@ class DataConfig:
     original_data_root: str
     data_root: str
     shuffle: bool
+
+
+@dataclass
+class Resources:
+    # General resource configs
+    timeout_min: int
+    cpus_per_task: Optional[int]
+    gpus_per_node: Optional[int]
+    tasks_per_node: int
+    mem_gb: Optional[int]
+    nodes: int
+
+    # Slurm resource configs
+    partition: Optional[str]
+    qos: Optional[str]
+    comment: Optional[str]
+    constraint: Optional[str]
+    exclude: Optional[str]
+    gres: Optional[str]
+    cpus_per_gpu: Optional[int]
+    gpus_per_task: Optional[int]
+    mem_per_gpu: Optional[int]
+    mem_per_cpu: Optional[int]
+    max_num_timeout: Optional[int]
 
 
 @dataclass

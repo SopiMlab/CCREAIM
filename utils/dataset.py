@@ -20,7 +20,7 @@ class AudioDataset(data.Dataset):
         self.sample_path_list = util.get_sample_path_list(self.data_root, self.ext)
 
     def __getitem__(self, index: int) -> Union[torch.Tensor, tuple[torch.Tensor, str]]:
-        waveform, _ = torchaudio.load(
+        waveform, _ = torchaudio.load(  # type: ignore
             str(self.sample_path_list[index]), format=self.ext
         )
         waveform = waveform.squeeze()
@@ -35,7 +35,7 @@ class AudioDataset(data.Dataset):
 
 
 class FeatureDataset(data.Dataset):
-    def __init__(self, data_root: Path, ext: str = "pth", return_name: bool = False):
+    def __init__(self, data_root: Path, ext: str = "pt", return_name: bool = False):
         self.data_root = Path(data_root)
         self.ext = ext
         self.return_name = return_name

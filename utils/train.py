@@ -43,7 +43,7 @@ def train(
             log.info(f"Epoch {epoch} complete, total loss: {running_loss}")
 
         if cfg.logging.checkpoint != 0 and epoch % cfg.logging.checkpoint == 0:
-            save_path = checkpoints_path / Path(f"{model_name}_ep-{epoch:03d}.pth")
+            save_path = checkpoints_path / Path(f"{model_name}_ep-{epoch:03d}.pt")
             torch.save(
                 {
                     "epoch": epoch,
@@ -56,7 +56,7 @@ def train(
             )
 
     # Save final model
-    final_save_path = checkpoints_path / Path(f"{model_name}_final.pth")
+    final_save_path = checkpoints_path / Path(f"{model_name}_final.pt")
     torch.save(
         {
             "epoch": cfg.hyper.epochs,
