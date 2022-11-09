@@ -19,15 +19,6 @@ class VQVAE(nn.Module):
         d = self.decoder(z)
         return d  # , mu, sigma
 
-    def loss_fn(
-        self,
-        pred: torch.Tensor,
-        data: torch.Tensor,
-        beta: float = 1.0,
-    ):
-        mse = F.mse_loss(pred, data)
-        return mse
-
 
 class VectorQuantizer(nn.Module):
     def __init__(self, num_embeddings: int, embedding_dim: int, beta: float = 0.25):

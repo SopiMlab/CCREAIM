@@ -14,7 +14,7 @@ from utils import cfg_classes, dataset, util
 from utils.test import test
 from utils.train import train
 
-log = logging.getLogger(__file__)
+log = logging.getLogger(__name__)
 
 
 @hydra.main(version_base=None, config_path="cfg", config_name="base")

@@ -71,8 +71,6 @@ class Transformer(nn.Module):
             batch_first=True,
         )
 
-        self.loss_fn = nn.MSELoss()
-
     def forward(
         self,
         src: torch.Tensor,

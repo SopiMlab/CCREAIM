@@ -5,10 +5,9 @@ import torch
 import torch.utils.data
 
 import wandb
-from model import ae, transformer, vae, vqvae
-from utils import cfg_classes, dataset, util
+from utils import cfg_classes, util
 
-log = logging.getLogger(__file__)
+log = logging.getLogger(__name__)
 
 
 def train(
@@ -27,31 +26,18 @@ def train(
         running_loss = torch.tensor(0.0)
         for batchnum, seq in enumerate(dataloader):
             seq = seq.to(device)
-            if isinstance(model, transformer.Transformer):
-                src = seq[:, :-1, :]
-                tgt = seq[:, 1:, :]
-                tgt_mask = model.get_tgt_mask(tgt.size(1))
-                tgt_mask = tgt_mask.to(device)
-                pred = model(src, tgt, tgt_mask)
-                loss = model.loss_fn(pred, tgt)
-            elif isinstance(model, vae.VAE):
-                pred, mu, sigma = model(seq)
-                loss = model.loss_fn(pred, seq, mu, sigma)
-            else:
-                pred = model(seq)
-                loss = model.loss_fn(pred, seq)
-
-            running_loss += loss.detach().cpu().item()
+            loss, _, info = util.step(model, seq, device)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
 
+            running_loss += loss.detach().cpu().item()
             if not cfg.logging.silent and batchnum % 100 == 0:
                 log.info(
                     f"epoch: {epoch:03d}/{cfg.hyper.epochs:03d} - batch: {batchnum:05d}/{len(dataloader):05d} - loss: {loss}"
                 )
             if cfg.logging.wandb:
-                wandb.log({"loss": loss})
+                wandb.log({"loss": loss, "epoch": epoch, "batch": batchnum, **info})
 
         if not cfg.logging.silent:
             log.info(f"Epoch {epoch} complete, total loss: {running_loss}")

@@ -6,29 +6,24 @@ from model import ae
 
 
 class VAE(nn.Module):
-    def __init__(self, encoder: nn.Module, decoder: nn.Module, reparam: nn.Module):
+    def __init__(
+        self,
+        encoder: nn.Module,
+        decoder: nn.Module,
+        reparam: nn.Module,
+        kld_weight: float = 0.05,
+    ):
         super().__init__()
         self.encoder = encoder
         self.reparam = reparam
         self.decoder = decoder
+        self.kld_weight = kld_weight
 
     def forward(self, data: torch.Tensor):
         e = self.encoder(data)
         z, mu, sigma = self.reparam(e)
         d = self.decoder(z)
         return d, mu, sigma
-
-    def loss_fn(
-        self,
-        pred: torch.Tensor,
-        data: torch.Tensor,
-        mu: torch.Tensor,
-        sigma: torch.Tensor,
-        kld_weight: float = 1.0,
-    ):
-        mse = F.mse_loss(pred, data)
-        kld = (sigma**2 + mu**2 - torch.log(sigma) - 1 / 2).sum()
-        return mse + kld_weight * kld
 
 
 class Reparametrization(nn.Module):

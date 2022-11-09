@@ -6,9 +6,9 @@ import torch.utils.data
 import torchaudio
 
 import wandb
-from utils import cfg_classes, dataset, util
+from utils import cfg_classes, util
 
-log = logging.getLogger(__file__)
+log = logging.getLogger(__name__)
 
 
 def test(
@@ -24,8 +24,7 @@ def test(
         for batchnum, seq in enumerate(dataloader):
             seq, name = seq
             seq = seq.to(device)
-            pred = model(seq)
-            loss = model.loss_fn(pred, seq)
+            loss, pred, _ = util.step(model, seq, device)
 
             if cfg.logging.save_pred:
                 for p, n in zip(pred, name):
@@ -46,11 +45,9 @@ def test(
             running_loss += loss.detach().cpu().item()
 
             if not cfg.logging.silent and batchnum % 100 == 0:
-                log.info(
-                    f"{cfg.hyper.epochs:05d} - {batchnum}/{len(dataloader)} - loss: {loss}"
-                )
-            if cfg.logging.wandb:
-                wandb.log({"loss": loss})
+                log.info(f"batch: {batchnum:05d}/{len(dataloader):05d} - loss: {loss}")
+        if cfg.logging.wandb:
+            wandb.log({"loss": running_loss})
 
         if not cfg.logging.silent:
             log.info(f"Epoch complete, total loss: {running_loss}")

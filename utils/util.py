@@ -7,7 +7,9 @@ from typing import List
 import numpy as np
 import torch
 import torchaudio
+from torch.nn import functional as F
 
+from model import ae, transformer, vae, vqvae
 from utils import cfg_classes
 
 log = logging.getLogger(__file__)
@@ -83,3 +85,31 @@ def get_model_path(cfg: cfg_classes.BaseConfig):
     exp_path = Path(cfg.logging.model_checkpoints)
     model_name = f"{cfg.hyper.model}_seqlen-{cfg.hyper.seq_len}_bs-{cfg.hyper.batch_size}_lr-{cfg.hyper.learning_rate}_seed-{cfg.hyper.seed}"
     return exp_path, model_name
+
+
+def step(
+    model: torch.nn.Module, seq: torch.Tensor, device: torch.device
+) -> tuple[torch.Tensor, torch.Tensor, dict[str, float]]:
+    info: dict[str, float] = {}
+    if isinstance(model, transformer.Transformer):
+        src = seq[:, :-1, :]
+        tgt = seq[:, 1:, :]
+        tgt_mask = model.get_tgt_mask(tgt.size(1))
+        tgt_mask = tgt_mask.to(device)
+        pred = model(src, tgt, tgt_mask)
+        loss = F.mse_loss(pred, tgt)
+    elif isinstance(model, vae.VAE):
+        pred, mu, sigma = model(seq)
+        mse = F.mse_loss(pred, seq)
+        kld = -0.5 * (1 + torch.log(sigma**2) - mu**2 - sigma**2).sum()
+        info.update(
+            {
+                "loss_mse": float(mse.item()),
+                "loss_kld": float((model.kld_weight * kld).item()),
+            }
+        )
+        loss = mse + model.kld_weight * kld
+    else:
+        pred = model(seq)
+        loss = F.mse_loss(pred, seq)
+    return loss, pred, info

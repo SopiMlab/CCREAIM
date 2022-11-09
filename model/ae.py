@@ -279,8 +279,6 @@ class AutoEncoder(nn.Module):
         self.encoder = encoder
         self.decoder = decoder
         self.net = nn.Sequential(self.encoder, self.decoder)
-        # TODO parameterise these
-        self.loss_fn = nn.MSELoss()
 
     def forward(self, input_data):
         return self.net(input_data)
