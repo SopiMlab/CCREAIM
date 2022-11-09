@@ -16,6 +16,8 @@ from utils.train import train
 
 log = logging.getLogger(__name__)
 
+OmegaConf.register_new_resolver("eval", eval)
+
 
 @hydra.main(version_base=None, config_path="cfg", config_name="base")
 def main(cfg: cfg_classes.BaseConfig):

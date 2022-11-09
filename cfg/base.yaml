@@ -2,7 +2,7 @@ hydra:
   run:
     dir: /scratch/other/sopi/CCREAIM/logs/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}
   sweep:
-    dir: /scratch/other/sopi/CCREAIM/logs/multirun/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    dir: /scratch/other/sopi/CCREAIM/logs/multirun/${now:%Y-%m-%d}/${hyper.model}_${eval:'"train" if ${train} else "test"'}_${now:%H-%M-%S}
     subdir: ${hydra.job.num}
   mode: MULTIRUN
 
