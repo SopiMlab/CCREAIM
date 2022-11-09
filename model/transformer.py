@@ -38,7 +38,7 @@ class PositionalEncoding(nn.Module):
             x: Tensor, shape [batch_size, seq_len, embedding_dim]
         """
         # Residual connection + pos encoding
-        return self.dropout(x + self.pos_encoding[:, : x.size(1), :])
+        return self.dropout(x + self.pos_encoding[:, : x.size(1), :])  # type: ignore
 
 
 class Transformer(nn.Module):
@@ -75,7 +75,7 @@ class Transformer(nn.Module):
         self,
         src: torch.Tensor,
         tgt: torch.Tensor,
-        tgt_mask: torch.Tensor = None,
+        tgt_mask: torch.Tensor,
     ):
         # Src size must be (batch_size, src sequence length)
         # Tgt size must be (batch_size, tgt sequence length)

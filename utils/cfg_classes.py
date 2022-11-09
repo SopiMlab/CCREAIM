@@ -26,14 +26,10 @@ class DataConfig:
 
 
 @dataclass
-class SlurmConfig:
-    gres: str
-
-
-@dataclass
 class HyperConfig:
     model: str
     seed: int
+    latent_dim: int
     seq_len: int
     epochs: int
     batch_size: int
@@ -48,6 +44,5 @@ class BaseConfig:
     # Train or test
     train: bool
 
-    slurm: SlurmConfig
     data: DataConfig
     hyper: HyperConfig

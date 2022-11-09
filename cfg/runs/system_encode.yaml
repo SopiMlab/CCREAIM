@@ -10,6 +10,7 @@ data:
 hyper:
   model: ae
   seed: 0
+  latent_dim: 16
   seq_len: 65536
   epochs: 100
   batch_size: 8

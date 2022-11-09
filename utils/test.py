@@ -32,12 +32,12 @@ def test(
                     if cfg.hyper.model == "transformer":
                         torch.save(p, save_path)
                     else:
-                        torchaudio.save(
+                        torchaudio.save(  # type: ignore
                             save_path, p, 16000, encoding="PCM_F", bits_per_sample=32
                         )
 
             if cfg.logging.save_encoder_output:
-                feat = model.encode(seq)
+                feat = model.encode(seq)  # type: ignore
                 for f, n in zip(feat, name):
                     save_path = Path(cfg.logging.encoder_output) / Path(n).stem
                     torch.save(f, str(save_path) + ".pth")
