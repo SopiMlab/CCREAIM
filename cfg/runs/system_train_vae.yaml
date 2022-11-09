@@ -1,0 +1,14 @@
+# @package _global_
+train: true
+
+logging:
+  exp_name: system
+
+hyper:
+  model: ae
+  seed: 0
+  latent_dim: 16
+  seq_len: 65536
+  epochs: 100
+  batch_size: 8
+  learning_rate: 1e-4

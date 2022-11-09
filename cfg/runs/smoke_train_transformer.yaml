@@ -1,0 +1,17 @@
+# @package _global_
+train: true
+
+logging:
+  exp_name: smoke
+
+data:
+  original_data_root: /scratch/other/sopi/CCREAIM/datasets/test/in
+  data_root: /scratch/other/sopi/CCREAIM/datasets/test/out
+
+hyper:
+  model: transformer
+  seed: 0
+  seq_len: 1000
+  epochs: 5
+  batch_size: 8
+  learning_rate: 1e-4
