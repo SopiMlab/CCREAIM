@@ -10,7 +10,7 @@ from hydra.experimental.callback import Callback
 from omegaconf import OmegaConf
 
 import wandb
-from model import ae, transformer, vae, vqvae
+from model import ae, end_to_end, transformer, vae, vqvae
 from utils import cfg_classes, dataset, util
 from utils.test import test
 from utils.train import train
@@ -68,9 +68,11 @@ def main(cfg: cfg_classes.BaseConfig):
         elif cfg.hyper.model == "vq-vae":
             model = vqvae.get_vqvae("base", cfg.hyper.seq_len, cfg.hyper.latent_dim)
         elif cfg.hyper.model == "transformer":
-            model = transformer.get_transformer("base")
+            model = transformer.get_transformer("base", cfg.hyper.latent_dim)
         elif cfg.hyper.model == "end-to-end":
-            raise ValueError(f"Model type {cfg.hyper.model} is not defined!")
+            model = end_to_end.get_end_to_end(
+                "base_ae", cfg.hyper.seq_len, 10, cfg.hyper.latent_dim
+            )
         else:
             raise ValueError(f"Model type {cfg.hyper.model} is not defined!")
     else:

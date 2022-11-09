@@ -104,10 +104,10 @@ class Transformer(nn.Module):
         return mask
 
 
-def get_transformer(name: str) -> Transformer:
+def get_transformer(name: str, latent_dim: int) -> Transformer:
     if name == "base":
         return Transformer(
-            dim_model=256,
+            dim_model=latent_dim,
             num_heads=8,
             num_encoder_layers=1,
             num_decoder_layers=1,
