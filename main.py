@@ -18,6 +18,8 @@ from utils.train import train
 
 log = logging.getLogger(__name__)
 
+OmegaConf.register_new_resolver("eval", eval)
+
 
 class LogJobReturnCallback(Callback):
     def __init__(self) -> None:
