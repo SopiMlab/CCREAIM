@@ -35,15 +35,15 @@ class VectorQuantizer(nn.Module):
         return
 
 
-def _create_vqvae(seq_length: int):
-    encoder = ae.Encoder(seq_length)
-    decoder = ae.Decoder(seq_length, encoder.output_lengths)
-    reparam = VectorQuantizer()
+def _create_vqvae(seq_length: int, latent_dim: int):
+    encoder = ae.Encoder(seq_length, latent_dim)
+    decoder = ae.Decoder(seq_length, latent_dim, encoder.output_lengths)
+    reparam = VectorQuantizer(200, 256)
     return VQVAE(encoder, decoder, reparam)
 
 
-def get_vqvae(name: str, seq_length: int):
+def get_vqvae(name: str, seq_length: int, latent_dim: int):
     if name == "base":
-        return _create_vqvae(seq_length)
+        return _create_vqvae(seq_length, latent_dim)
     else:
         raise ValueError("Unknown autoencoder name: '{}'".format(name))

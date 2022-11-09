@@ -30,12 +30,8 @@ def create_conv1d_layer(
 
 
 class Encoder(nn.Module):
-    def __init__(self, seq_length):
+    def __init__(self, seq_length: int, latent_dim: int):
         super().__init__()
-
-        # Latent space dimension
-        latent_dim = 256
-
         # The negative slope coefficient for leaky ReLU
         leaky_relu_alpha = 0.2
 
@@ -161,11 +157,8 @@ def create_convtranspose1d_layer(
 
 
 class Decoder(nn.Module):
-    def __init__(self, seq_length, output_lengths):
+    def __init__(self, seq_length: int, latent_dim: int, output_lengths: list[int]):
         super().__init__()
-
-        # Latent space dimension
-        latent_dim = 256
 
         # The negative slope coefficient for leaky ReLU
         leaky_relu_alpha = 0.2
@@ -287,14 +280,14 @@ class AutoEncoder(nn.Module):
         return self.encoder(input_data)
 
 
-def _create_autoencoder(seq_length):
-    encoder = Encoder(seq_length)
-    decoder = Decoder(seq_length, encoder.output_lengths)
+def _create_autoencoder(seq_length, latent_dim):
+    encoder = Encoder(seq_length, latent_dim)
+    decoder = Decoder(seq_length, latent_dim, encoder.output_lengths)
     return AutoEncoder(encoder, decoder)
 
 
-def get_autoencoder(name: str, seq_length: int):
+def get_autoencoder(name: str, seq_length: int, latent_dim: int):
     if name == "base":
-        return _create_autoencoder(seq_length)
+        return _create_autoencoder(seq_length, latent_dim)
     else:
         raise ValueError("Unknown autoencoder name: '{}'".format(name))

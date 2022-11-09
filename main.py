@@ -1,3 +1,4 @@
+import dataclasses
 import logging
 from pathlib import Path
 
@@ -30,7 +31,6 @@ def main(cfg: cfg_classes.BaseConfig):
         ValueError: if misconfiguration
     """
     env = submitit.JobEnvironment()
-
     log.info(OmegaConf.to_yaml(cfg))
 
     if cfg.logging.wandb:
@@ -39,7 +39,7 @@ def main(cfg: cfg_classes.BaseConfig):
             entity="ccreaim",
             name=f"{cfg.hyper.model}-{cfg.logging.exp_name}-{str(cfg.hyper.seed)}-{cfg.logging.run_id}",
             group=f"{cfg.hyper.model}-{cfg.logging.exp_name}",
-            config=cfg,
+            config=OmegaConf.to_container(cfg),  # type: ignore
         )
 
     util.set_seed(cfg.hyper.seed)
@@ -48,15 +48,15 @@ def main(cfg: cfg_classes.BaseConfig):
     # if training initialize a new model, if testing load an existing trained one
     if cfg.train:
         if cfg.hyper.model == "ae":
-            model = ae.get_autoencoder("base", cfg.hyper.seq_len)
+            model = ae.get_autoencoder("base", cfg.hyper.seq_len, cfg.hyper.latent_dim)
         elif cfg.hyper.model == "vae":
-            model = vae.get_vae("base", cfg.hyper.seq_len)
+            model = vae.get_vae("base", cfg.hyper.seq_len, cfg.hyper.latent_dim)
         elif cfg.hyper.model == "vq-vae":
-            model = None
+            model = vqvae.get_vqvae("base", cfg.hyper.seq_len, cfg.hyper.latent_dim)
         elif cfg.hyper.model == "transformer":
             model = transformer.get_transformer("base")
         elif cfg.hyper.model == "end-to-end":
-            model = None
+            raise ValueError(f"Model type {cfg.hyper.model} is not defined!")
         else:
             raise ValueError(f"Model type {cfg.hyper.model} is not defined!")
     else:

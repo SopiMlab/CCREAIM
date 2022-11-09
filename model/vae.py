@@ -45,15 +45,15 @@ class Reparametrization(nn.Module):
         return z, mu, sigma
 
 
-def _create_vae(seq_length: int):
-    encoder = ae.Encoder(seq_length)
-    decoder = ae.Decoder(seq_length, encoder.output_lengths)
-    reparam = Reparametrization(encoder.output_lengths[-1], 256)
+def _create_vae(seq_length: int, latent_dim: int):
+    encoder = ae.Encoder(seq_length, latent_dim)
+    decoder = ae.Decoder(seq_length, latent_dim, encoder.output_lengths)
+    reparam = Reparametrization(encoder.output_lengths[-1], latent_dim)
     return VAE(encoder, decoder, reparam)
 
 
-def get_vae(name: str, seq_length: int):
+def get_vae(name: str, seq_length: int, latent_dim: int):
     if name == "base":
-        return _create_vae(seq_length)
+        return _create_vae(seq_length, latent_dim)
     else:
         raise ValueError("Unknown autoencoder name: '{}'".format(name))
