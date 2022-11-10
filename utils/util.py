@@ -87,8 +87,54 @@ def get_model_path(cfg: cfg_classes.BaseConfig):
     return exp_path, model_name
 
 
+# Spectral loss
+class STFTValues:
+    def __init__(self, n_bins: int, hop_length: int, window_size: int):
+        self.n_bins = n_bins
+        self.hop_length = hop_length
+        self.window_size = window_size
+
+
+def norm(x: torch.Tensor):
+    return (x.view(x.shape[0], -1) ** 2).sum(dim=-1).sqrt()
+
+
+def spec(seq: torch.Tensor, stft_val: STFTValues):
+    return torch.norm(
+        torch.stft(
+            seq,
+            stft_val.n_bins,
+            stft_val.hop_length,
+            win_length=stft_val.window_size,
+            window=torch.hann_window(stft_val.window_size, device=seq.device),
+        ),
+        p=2,
+        dim=-1,
+    )
+
+
+def multispectral_loss(
+    seq: torch.Tensor, pred: torch.Tensor, cfg: cfg_classes.BaseConfig
+):
+    losses = []
+    args = [
+        cfg.hyper.spectral_loss.stft_bins,
+        cfg.hyper.spectral_loss.stft_hop_length,
+        cfg.hyper.spectral_loss.stft_window_size,
+    ]
+    for n_bins, hop_length, window_size in zip(*args):
+        stft_val = STFTValues(n_bins, hop_length, window_size)
+        spec_in = spec(torch.squeeze(seq), stft_val)
+        spec_out = spec(torch.squeeze(pred), stft_val)
+        losses.append(norm(spec_in - spec_out))
+    return sum(losses) / len(losses)
+
+
 def step(
-    model: torch.nn.Module, seq: torch.Tensor, device: torch.device
+    model: torch.nn.Module,
+    seq: torch.Tensor,
+    device: torch.device,
+    cfg: cfg_classes.BaseConfig,
 ) -> tuple[torch.Tensor, torch.Tensor, dict[str, float]]:
     info: dict[str, float] = {}
     if isinstance(model, transformer.Transformer):
@@ -102,13 +148,16 @@ def step(
         pred, mu, sigma = model(seq)
         mse = F.mse_loss(pred, seq)
         kld = -0.5 * (1 + torch.log(sigma**2) - mu**2 - sigma**2).sum()
+        spec_weight = cfg.hyper.spectral_loss.weight
+        multi_spec = multispectral_loss(seq, pred, cfg).sum()
         info.update(
             {
                 "loss_mse": float(mse.item()),
                 "loss_kld": float((model.kld_weight * kld).item()),
+                "loss_spectral": float(spec_weight * multi_spec.item()),
             }
         )
-        loss = mse + model.kld_weight * kld
+        loss = mse + model.kld_weight * kld + spec_weight * multi_spec
     else:
         pred = model(seq)
         loss = F.mse_loss(pred, seq)

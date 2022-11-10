@@ -24,7 +24,7 @@ def test(
         for batchnum, seq in enumerate(dataloader):
             seq, name = seq
             seq = seq.to(device)
-            loss, pred, _ = util.step(model, seq, device)
+            loss, pred, _ = util.step(model, seq, device, cfg)
 
             if cfg.logging.save_pred:
                 for p, n in zip(pred, name):

@@ -26,7 +26,7 @@ def train(
         running_loss = torch.tensor(0.0)
         for batchnum, seq in enumerate(dataloader):
             seq = seq.to(device)
-            loss, _, info = util.step(model, seq, device)
+            loss, _, info = util.step(model, seq, device, cfg)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
