@@ -10,10 +10,9 @@ from hydra.experimental.callback import Callback
 from omegaconf import OmegaConf
 
 import wandb
-from model import ae, end_to_end, transformer, vae, vqvae
 from utils import cfg_classes, dataset, util
+from utils.cross_validation import cross_validation
 from utils.test import test
-from utils.train import train
 
 log = logging.getLogger(__name__)
 
@@ -47,37 +46,7 @@ def main(cfg: cfg_classes.BaseConfig):
     """
     log.info(OmegaConf.to_yaml(cfg))
 
-    if cfg.logging.wandb:
-        wandb.init(
-            project="ccreaim",
-            entity="ccreaim",
-            name=f"{cfg.hyper.model}-{cfg.logging.exp_name}-{str(cfg.hyper.seed)}-{cfg.logging.run_id}",
-            group=f"{cfg.hyper.model}-{cfg.logging.exp_name}",
-            config=OmegaConf.to_container(cfg),  # type: ignore
-        )
-
     util.set_seed(cfg.hyper.seed)
-
-    # Fetch the model:
-    # if training initialize a new model, if testing load an existing trained one
-    if cfg.train:
-        if cfg.hyper.model == "ae":
-            model = ae.get_autoencoder("base", cfg.hyper.seq_len, cfg.hyper.latent_dim)
-        elif cfg.hyper.model == "vae":
-            model = vae.get_vae("base", cfg.hyper.seq_len, cfg.hyper.latent_dim)
-        elif cfg.hyper.model == "vq-vae":
-            model = vqvae.get_vqvae("base", cfg.hyper.seq_len, cfg.hyper.latent_dim)
-        elif cfg.hyper.model == "transformer":
-            model = transformer.get_transformer("base", cfg.hyper.latent_dim)
-        elif cfg.hyper.model == "end-to-end":
-            model = end_to_end.get_end_to_end(
-                "base_ae", cfg.hyper.seq_len, 10, cfg.hyper.latent_dim
-            )
-        else:
-            raise ValueError(f"Model type {cfg.hyper.model} is not defined!")
-    else:
-        checkpoint = torch.load(cfg.logging.load_model_path, map_location="cpu")
-        model = checkpoint["model"]
 
     # Get the dataset, use audio data for any non-transformer model,
     # feature data for transformers
@@ -98,9 +67,7 @@ def main(cfg: cfg_classes.BaseConfig):
                 cfg.hyper.seq_len,
             )
         # Sound dataset. Return name if testing
-        data = dataset.AudioDataset(
-            data_root_sample_len, cfg.hyper.seq_len, return_name=not cfg.train
-        )
+        data = dataset.AudioDataset(data_root_sample_len, cfg.hyper.seq_len)
 
     else:
         data_root = Path(cfg.data.data_root)
@@ -109,20 +76,26 @@ def main(cfg: cfg_classes.BaseConfig):
         # Feature dataset
         data = dataset.FeatureDataset(data_root)
 
-    # Make a dataloader
-    dataloader = torch.utils.data.DataLoader(
-        data, batch_size=cfg.hyper.batch_size, shuffle=cfg.data.shuffle, num_workers=1
-    )
-
     # Use gpu if available, move the model to device
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    model = model.to(device)
 
     # Train/test
-    if cfg.train:
-        optimizer = torch.optim.Adam(model.parameters(), cfg.hyper.learning_rate)
-        train(model, dataloader, optimizer, device, cfg)
+    if cfg.process.train:
+        cross_validation(data, device, cfg)
     else:
+        # Fetch the model:
+        # testing load an existing trained one
+        checkpoint = torch.load(cfg.logging.load_model_path, map_location="cpu")
+        model = checkpoint["model"]
+        model = model.to(device)
+
+        # Make a dataloader
+        dataloader = torch.utils.data.DataLoader(
+            data,
+            batch_size=cfg.hyper.batch_size,
+            shuffle=cfg.data.shuffle,
+            num_workers=cfg.resources.num_workers,
+        )
         test(model, dataloader, device, cfg)
 
 

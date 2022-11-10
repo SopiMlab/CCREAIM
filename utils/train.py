@@ -3,6 +3,7 @@ from pathlib import Path
 
 import torch
 import torch.utils.data
+from omegaconf import OmegaConf
 
 import wandb
 from utils import cfg_classes, util
@@ -16,15 +17,35 @@ def train(
     optimizer,  # torch optimizer
     device: torch.device,
     cfg: cfg_classes.BaseConfig,
+    fold: int = 0,
 ):
 
+    if cfg.logging.wandb:
+        wandb_group_name = f"{cfg.hyper.model}-{cfg.logging.exp_name}"
+        wandb_exp_name = (
+            f"{cfg.hyper.model}-{cfg.logging.exp_name}-train-seed:{str(cfg.hyper.seed)}"
+        )
+        if fold != 0:
+            wandb_exp_name += f"-fold:{fold}"
+
+        wandb.init(
+            project="ccreaim",
+            entity="ccreaim",
+            name=wandb_exp_name,
+            group=wandb_group_name,
+            config=OmegaConf.to_container(cfg),  # type: ignore
+        )
+        wandb.config.update({"time": cfg.logging.run_id})
+
     checkpoints_path, model_name = util.get_model_path(cfg)
-    checkpoints_path.mkdir(exist_ok=True)
+    if cfg.process.cross_val_k > 1 and fold != 0:
+        checkpoints_path /= Path(f"fold_{fold}")
+    checkpoints_path.mkdir(exist_ok=True, parents=True)
 
     model.train()
     for epoch in range(1, cfg.hyper.epochs + 1):
         running_loss = torch.tensor(0.0)
-        for batchnum, seq in enumerate(dataloader):
+        for batchnum, (seq, _) in enumerate(dataloader):
             seq = seq.to(device)
             loss, _, info = util.step(model, seq, device)
             optimizer.zero_grad()
@@ -37,7 +58,9 @@ def train(
                     f"epoch: {epoch:03d}/{cfg.hyper.epochs:03d} - batch: {batchnum:05d}/{len(dataloader):05d} - loss: {loss}"
                 )
             if cfg.logging.wandb:
-                wandb.log({"loss": loss, "epoch": epoch, "batch": batchnum, **info})
+                wandb.log(
+                    {"train/loss": loss, "epoch": epoch, "batch": batchnum, **info}
+                )
 
         if not cfg.logging.silent:
             log.info(f"Epoch {epoch} complete, total loss: {running_loss}")
@@ -67,3 +90,6 @@ def train(
         },
         final_save_path,
     )
+
+    if cfg.logging.wandb:
+        wandb.finish()

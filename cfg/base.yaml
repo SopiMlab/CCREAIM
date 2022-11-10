@@ -2,7 +2,7 @@ hydra:
   run:
     dir: /scratch/other/sopi/CCREAIM/logs/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}
   sweep:
-    dir: /scratch/other/sopi/CCREAIM/logs/multirun/${now:%Y-%m-%d}/${hyper.model}_${eval:'"train" if ${train} else "test"'}_${now:%H-%M-%S}
+    dir: /scratch/other/sopi/CCREAIM/logs/multirun/${now:%Y-%m-%d}/${hyper.model}_${eval:'"train" if ${process.train} else "test"'}_${now:%H-%M-%S}
     subdir: ${hydra.job.num}
   mode: MULTIRUN
   callbacks:
@@ -30,9 +30,15 @@ logging:
   save_encoder_output: false
   encoder_output: /scratch/other/sopi/CCREAIM/datasets/test/out/enc
 
-train: ???
+# number of cross val splits, 0=only training, 1=only one validation set
+process:
+  train: ???
+  cross_val_k: ???
 
 resources:
+  # DataLoader num_workers parameter
+  num_workers: 2
+
   # General resource configs
   timeout_min: 60
   cpus_per_task: 1

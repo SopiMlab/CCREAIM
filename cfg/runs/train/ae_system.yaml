@@ -1,6 +1,8 @@
 
 # @package _global_
-train: true
+process:
+  train: true
+  cross_val_k: 0
 
 logging:
   exp_name: system

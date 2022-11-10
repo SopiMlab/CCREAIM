@@ -27,7 +27,19 @@ class DataConfig:
 
 
 @dataclass
+class ProcessConfig:
+    # training or only testing
+    train: bool
+    # number of cross val splits
+    # if 0=only training no validation, if 1=only one validation set etc.
+    cross_val_k: int
+
+
+@dataclass
 class Resources:
+    # DataLoader num_workers parameter
+    num_workers: int
+
     # General resource configs
     timeout_min: int
     cpus_per_task: Optional[int]
@@ -63,11 +75,8 @@ class HyperConfig:
 
 @dataclass
 class BaseConfig:
-    # Logging
     logging: LoggingConfig
-
-    # Train or test
-    train: bool
-
+    process: ProcessConfig
     data: DataConfig
+    resources: Resources
     hyper: HyperConfig

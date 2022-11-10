@@ -4,6 +4,7 @@ from pathlib import Path
 import torch
 import torch.utils.data
 import torchaudio
+from omegaconf import OmegaConf
 
 import wandb
 from utils import cfg_classes, util
@@ -16,13 +17,28 @@ def test(
     dataloader: torch.utils.data.DataLoader,
     device: torch.device,
     cfg: cfg_classes.BaseConfig,
+    fold: int = 0,
 ):
+
+    if cfg.logging.wandb:
+        wandb_group_name = f"{cfg.hyper.model}-{cfg.logging.exp_name}"
+        wandb_exp_name = f"{cfg.hyper.model}-{cfg.logging.exp_name}-test-seed:{str(cfg.hyper.seed)}-id:{cfg.logging.run_id}"
+        if fold != 0:
+            wandb_exp_name += f"-fold:{fold}"
+
+        wandb.init(
+            project="ccreaim",
+            entity="ccreaim",
+            name=wandb_exp_name,
+            group=wandb_group_name,
+            config=OmegaConf.to_container(cfg),  # type: ignore
+        )
+        wandb.config.update({"time": cfg.logging.run_id})
 
     model.eval()
     with torch.no_grad():
         running_loss = torch.tensor(0.0)
-        for batchnum, seq in enumerate(dataloader):
-            seq, name = seq
+        for batchnum, (seq, name) in enumerate(dataloader):
             seq = seq.to(device)
             loss, pred, _ = util.step(model, seq, device)
 
@@ -44,10 +60,9 @@ def test(
 
             running_loss += loss.detach().cpu().item()
 
-            if not cfg.logging.silent and batchnum % 100 == 0:
-                log.info(f"batch: {batchnum:05d}/{len(dataloader):05d} - loss: {loss}")
-        if cfg.logging.wandb:
-            wandb.log({"loss": running_loss})
+    if cfg.logging.wandb:
+        wandb.log({"test/loss": running_loss})
+        wandb.finish()
 
-        if not cfg.logging.silent:
-            log.info(f"Epoch complete, total loss: {running_loss}")
+    if not cfg.logging.silent:
+        log.info(f"Testing complete, total loss: {running_loss}")
