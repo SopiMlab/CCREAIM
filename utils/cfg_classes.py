@@ -63,6 +63,14 @@ class Resources:
 
 
 @dataclass
+class SpectralLossConfig:
+    weight: float
+    stft_bins: list[int]
+    stft_hop_length: list[int]
+    stft_window_size: list[int]
+
+
+@dataclass
 class HyperConfig:
     model: str
     seed: int
@@ -71,6 +79,7 @@ class HyperConfig:
     epochs: int
     batch_size: int
     learning_rate: float
+    spectral_loss: SpectralLossConfig
 
 
 @dataclass

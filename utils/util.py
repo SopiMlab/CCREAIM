@@ -117,11 +117,11 @@ def multispectral_loss(
     seq: torch.Tensor, pred: torch.Tensor, cfg: cfg_classes.BaseConfig
 ):
     losses = []
-    args = [
+    args = (
         cfg.hyper.spectral_loss.stft_bins,
         cfg.hyper.spectral_loss.stft_hop_length,
         cfg.hyper.spectral_loss.stft_window_size,
-    ]
+    )
     for n_bins, hop_length, window_size in zip(*args):
         stft_val = STFTValues(n_bins, hop_length, window_size)
         spec_in = spec(torch.squeeze(seq), stft_val)

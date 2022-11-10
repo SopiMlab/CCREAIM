@@ -9,7 +9,6 @@ from hydra.core.utils import JobReturn, JobStatus
 from hydra.experimental.callback import Callback
 from omegaconf import OmegaConf
 
-import wandb
 from utils import cfg_classes, dataset, util
 from utils.cross_validation import cross_validation
 from utils.test import test
