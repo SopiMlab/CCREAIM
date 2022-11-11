@@ -21,8 +21,7 @@ class LoggingConfig:
 
 @dataclass
 class DataConfig:
-    original_data_root: str
-    data_root: str
+    data_tar: str
     shuffle: bool
 
 

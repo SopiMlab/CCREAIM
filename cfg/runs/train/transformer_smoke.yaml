@@ -7,8 +7,7 @@ logging:
   exp_name: smoke
 
 data:
-  original_data_root: /scratch/other/sopi/CCREAIM/datasets/test/in
-  data_root: /scratch/other/sopi/CCREAIM/datasets/test/out
+  data_tar: ???
 
 hyper:
   model: transformer

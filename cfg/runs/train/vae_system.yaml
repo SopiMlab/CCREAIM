@@ -6,6 +6,9 @@ process:
 logging:
   exp_name: system
 
+data:
+  data_tar: /scratch/other/sopi/CCREAIM/datasets/chopped_65536.tar
+
 hyper:
   model: ae
   seed: 0

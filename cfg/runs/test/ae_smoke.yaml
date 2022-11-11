@@ -4,8 +4,7 @@ process:
   cross_val_k: 0
 
 data:
-  original_data_root: /scratch/other/sopi/CCREAIM/datasets/test/in
-  data_root: /scratch/other/sopi/CCREAIM/datasets/test/out
+  data_tar: /scratch/other/sopi/CCREAIM/datasets/test/out/chopped_65536.tar
 
 hyper:
   model: ae

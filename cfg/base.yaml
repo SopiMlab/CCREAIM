@@ -61,8 +61,7 @@ resources:
   max_num_timeout: 0
 
 data:
-  original_data_root: /scratch/other/sopi/CCREAIM/datasets/magna-tag-a-tune
-  data_root: /scratch/other/sopi/CCREAIM/datasets
+  data_tar: ???
   shuffle: true
 
 # Parameters for slurm
