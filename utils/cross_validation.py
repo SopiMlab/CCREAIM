@@ -43,6 +43,7 @@ def cross_validation(
         )
         for fold, (tr_idx, val_idx) in enumerate(kfold.split(dataset), start=1):
             model = get_model()
+            model.to(device)
             optimizer = torch.optim.Adam(model.parameters(), cfg.hyper.learning_rate)
             train_dataloader = torch.utils.data.DataLoader(
                 dataset,
@@ -63,6 +64,7 @@ def cross_validation(
             test.test(model, test_loader, device, cfg, fold)
     else:
         model = get_model()
+        model.to(device)
         optimizer = torch.optim.Adam(model.parameters(), cfg.hyper.learning_rate)
         dataloader = torch.utils.data.DataLoader(
             dataset,
