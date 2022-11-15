@@ -1,6 +1,8 @@
+import io
 import logging
 import math
 import random
+import tarfile
 from pathlib import Path
 from typing import List
 
@@ -33,25 +35,30 @@ def chop_sample(sample: torch.Tensor, sample_length: int) -> List[torch.Tensor]:
     return chopped_samples_list
 
 
-def chop_dataset(in_root: str, out_root: str, ext: str, sample_length: int):
+def chop_dataset(in_root: str, out_tar_file_path: str, ext: str, sample_length: int):
     samples_paths = get_sample_path_list(Path(in_root), ext)
-    for pth in samples_paths:
-        try:
-            full_sample, sample_rate = torchaudio.load(str(pth), format=ext)  # type: ignore
-        except RuntimeError as e:
-            log.warn(f"Could not open file, with error: {e}")
-            continue
+    with tarfile.open(out_tar_file_path, "a") as out_tar:
+        for pth in samples_paths:
+            try:
+                full_sample, sample_rate = torchaudio.load(str(pth), format=ext)  # type: ignore
+            except RuntimeError as e:
+                log.warn(f"Could not open file, with error: {e}")
+                continue
 
-        chopped_samples = chop_sample(full_sample.squeeze(), sample_length)
-        for i, cs in enumerate(chopped_samples):
-            out_path = Path(out_root) / Path(str(pth.stem) + f"_{i:03d}" + ".wav")
-            torchaudio.save(  # type: ignore
-                out_path,
-                cs.unsqueeze(0),
-                sample_rate,
-                encoding="PCM_F",
-                bits_per_sample=32,
-            )
+            chopped_samples = chop_sample(full_sample.squeeze(), sample_length)
+            for i, cs in enumerate(chopped_samples):
+                out_name = str(pth.stem) + f"_{i:03d}" + ".wav"
+                with io.BytesIO() as buffer:
+                    torchaudio.save(  # type: ignore
+                        buffer,
+                        cs.unsqueeze(0),
+                        sample_rate,
+                        encoding="PCM_F",
+                        bits_per_sample=32,
+                    )
+                    out_info = tarfile.TarInfo(name=out_name)
+                    out_info.size = buffer.getbuffer().nbytes
+                    out_tar.addfile(out_info, buffer)
 
 
 def get_sample_path_list(data_root: Path, ext: str = "mp3") -> List[Path]:

@@ -50,39 +50,39 @@ def main(cfg: cfg_classes.BaseConfig):
     # Use gpu if available, move the model to device
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
-    tmp_data_tar = dataset.prepare_dataset_on_tmp(data_tar=cfg.data.data_tar, cfg=cfg)
+    tmp_data_root = dataset.prepare_dataset_on_tmp(data_tar=cfg.data.data_tar, cfg=cfg)
 
     # Get the dataset, use audio data for any non-transformer model,
     # feature data for transformers
-    with tarfile.open(tmp_data_tar, "r") as data_tar:
-        # Get the dataset, use audio data for any non-transformer model,
-        # feature data for transformers
-        if cfg.hyper.model != "transformer":
-            # Sound dataset
-            data = dataset.AudioDataset(data_tar, cfg.hyper.seq_len)
 
-        else:
-            # Feature dataset
-            data = dataset.FeatureDataset(data_tar)
+    # Get the dataset, use audio data for any non-transformer model,
+    # feature data for transformers
+    if cfg.hyper.model != "transformer":
+        # Sound dataset
+        data = dataset.AudioDataset(tmp_data_root, cfg.hyper.seq_len)
 
-        # Train/test
-        if cfg.process.train:
-            cross_validation(data, device, cfg)
-        else:
-            # Fetch the model:
-            # testing load an existing trained one
-            checkpoint = torch.load(cfg.logging.load_model_path, map_location="cpu")
-            model = checkpoint["model"]
-            model = model.to(device)
+    else:
+        # Feature dataset
+        data = dataset.FeatureDataset(tmp_data_root)
 
-            # Make a dataloader
-            dataloader = torch.utils.data.DataLoader(
-                data,
-                batch_size=cfg.hyper.batch_size,
-                shuffle=cfg.data.shuffle,
-                num_workers=cfg.resources.num_workers,
-            )
-            test(model, dataloader, device, cfg)
+    # Train/test
+    if cfg.process.train:
+        cross_validation(data, device, cfg)
+    else:
+        # Fetch the model:
+        # testing load an existing trained one
+        checkpoint = torch.load(cfg.logging.load_model_path, map_location="cpu")
+        model = checkpoint["model"]
+        model = model.to(device)
+
+        # Make a dataloader
+        dataloader = torch.utils.data.DataLoader(
+            data,
+            batch_size=cfg.hyper.batch_size,
+            shuffle=cfg.data.shuffle,
+            num_workers=cfg.resources.num_workers,
+        )
+        test(model, dataloader, device, cfg)
 
 
 if __name__ == "__main__":
