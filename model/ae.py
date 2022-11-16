@@ -1,5 +1,6 @@
 from torch import nn
 
+from model.resnet import Resnet1D
 from utils import util
 
 """
@@ -278,6 +279,75 @@ class AutoEncoder(nn.Module):
 
     def encode(self, input_data):
         return self.encoder(input_data)
+
+
+# Jukebox imitating ResNet-based AE:
+
+
+class EncoderConvBlock(nn.Module):
+    def __init__(
+        self,
+        input_emb_width,
+        output_emb_width,
+        down_t,
+        stride_t,
+        width,
+        depth,
+        m_conv,
+        dilation_growth_rate=1,
+        dilation_cycle=None,
+        res_scale=False,
+    ):
+        super().__init__()
+        blocks = []
+        filter_t, pad_t = stride_t * 2, stride_t // 2
+        if down_t > 0:
+            for i in range(down_t):
+                block = nn.Sequential(
+                    nn.Conv1d(
+                        input_emb_width if i == 0 else width,
+                        width,
+                        filter_t,
+                        stride_t,
+                        pad_t,
+                    ),
+                    Resnet1D(
+                        width,
+                        depth,
+                        m_conv,
+                        dilation_growth_rate,
+                        dilation_cycle,
+                        zero_out,
+                        res_scale,
+                    ),
+                )
+                blocks.append(block)
+            block = nn.Conv1d(width, output_emb_width, 3, 1, 1)
+            blocks.append(block)
+        self.model = nn.Sequential(*blocks)
+
+    def forward(self, x):
+        return self.model(x)
+
+
+class DecoderConvBlock(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+
+class ResEncoder(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+
+class ResDecoder(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+
+class ResAutoEncoder(nn.Module):
+    def __init__(self):
+        super().__init__()
 
 
 def _create_autoencoder(seq_length: int, latent_dim: int):
