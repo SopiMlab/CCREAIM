@@ -18,8 +18,10 @@ hyper:
   epochs: 30
   batch_size: 32
   learning_rate: 1e-5
+  kld_loss:
+    weight: 1e-3
   spectral_loss:
-    weight: 1e-5
+    weight: 1e-4
     stft_bins:
       - 2048
       - 1024
@@ -34,7 +36,7 @@ hyper:
       - 240
 
 resources:
-  num_workers: 1
+  num_workers: 2
   # General resource configs
   timeout_min: 1000
   cpus_per_task: null

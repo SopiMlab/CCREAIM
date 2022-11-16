@@ -62,6 +62,11 @@ class Resources:
 
 
 @dataclass
+class KldLossConfig:
+    weight: float
+
+
+@dataclass
 class SpectralLossConfig:
     weight: float
     stft_bins: list[int]
@@ -78,6 +83,7 @@ class HyperConfig:
     epochs: int
     batch_size: int
     learning_rate: float
+    kld_loss: KldLossConfig
     spectral_loss: SpectralLossConfig
 
 
