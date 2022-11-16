@@ -55,9 +55,4 @@ class Resnet1D(nn.Module):
         self.model = nn.Sequential(*blocks)
 
     def forward(self, x):
-        if self.checkpoint_res == 1:
-            for block in self.blocks:
-                x = checkpoint(block, (x,), block.parameters(), True)
-            return x
-        else:
-            return self.model(x)
+        return self.model(x)
