@@ -13,13 +13,13 @@ data:
 hyper:
   model: e2e-chunked
   seed: 0
-  latent_dim: 16
+  latent_dim: 32
   seq_len: 4096
   epochs: 100
-  batch_size: 8
-  learning_rate: 1e-5
+  batch_size: 4
+  learning_rate: 1e-6
   spectral_loss:
-    weight: 1e-5
+    weight: 1e-3
     stft_bins:
       - 2048
       - 1024
@@ -39,8 +39,8 @@ resources:
 
   # General resource configs
   timeout_min: 60
-  cpus_per_task: 6
-  gpus_per_node: 0
+  cpus_per_task: 4
+  gpus_per_node: 1
   tasks_per_node: 1
-  mem_gb: 4
+  mem_gb: 1
   nodes: 1

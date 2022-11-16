@@ -153,7 +153,7 @@ def step(
     info: dict[str, float] = {}
     if isinstance(model, transformer.Transformer):
         seq, _ = batch
-        seq.to(device)
+        seq = seq.to(device)
         src = seq[:, :-1, :]
         tgt = seq[:, 1:, :]
         tgt_mask = model.get_tgt_mask(tgt.size(1))
@@ -162,8 +162,8 @@ def step(
         loss = F.mse_loss(pred, tgt)
     elif isinstance(model, e2e_chunked.E2EChunked):
         seq, _, pad_mask = batch
-        seq.to(device)
-        pad_mask.to(device)
+        seq = seq.to(device)
+        pad_mask = pad_mask.to(device)
         pred = model(seq, pad_mask, device)
         tgt = seq[:, 1:, :]
         tgt_pad_mask = pad_mask[:, 1:]
@@ -183,7 +183,7 @@ def step(
         loss = mse + spec_weight * multi_spec
     elif isinstance(model, vae.VAE):
         seq, _ = batch
-        seq.to(device)
+        seq = seq.to(device)
         pred, mu, sigma = model(seq)
         mse = F.mse_loss(pred, seq)
         kld_weight = cfg.hyper.kld_loss.weight
