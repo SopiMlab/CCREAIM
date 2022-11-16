@@ -205,6 +205,7 @@ def step(
         mse = F.mse_loss(pred, seq)
         spec_weight = cfg.hyper.spectral_loss.weight
         multi_spec = multispectral_loss(seq, pred, cfg)
+        multi_spec = multi_spec.mean()
         info.update(
             {
                 "loss_mse": float(mse.item()),
