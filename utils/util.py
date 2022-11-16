@@ -123,7 +123,7 @@ def spec(seq: torch.Tensor, stft_val: STFTValues):
 def multispectral_loss(
     seq: torch.Tensor, pred: torch.Tensor, cfg: cfg_classes.BaseConfig
 ):
-    losses = []
+    losses = torch.zeros(seq.shape[0], device=seq.device)
     args = (
         cfg.hyper.spectral_loss.stft_bins,
         cfg.hyper.spectral_loss.stft_hop_length,
@@ -133,8 +133,8 @@ def multispectral_loss(
         stft_val = STFTValues(n_bins, hop_length, window_size)
         spec_in = spec(torch.squeeze(seq), stft_val)
         spec_out = spec(torch.squeeze(pred), stft_val)
-        losses.append(norm(spec_in - spec_out))
-    return sum(losses) / len(losses)
+        losses += norm(spec_in - spec_out)
+    return torch.mean(losses)
 
 
 def step(
@@ -154,17 +154,18 @@ def step(
     elif isinstance(model, vae.VAE):
         pred, mu, sigma = model(seq)
         mse = F.mse_loss(pred, seq)
+        kld_weight = cfg.hyper.kld_loss.weight
         kld = -0.5 * (1 + torch.log(sigma**2) - mu**2 - sigma**2).sum()
         spec_weight = cfg.hyper.spectral_loss.weight
-        multi_spec = multispectral_loss(seq, pred, cfg).sum()
+        multi_spec = multispectral_loss(seq, pred, cfg)
         info.update(
             {
                 "loss_mse": float(mse.item()),
-                "loss_kld": float((model.kld_weight * kld).item()),
+                "loss_kld": float((kld_weight * kld).item()),
                 "loss_spectral": float(spec_weight * multi_spec.item()),
             }
         )
-        loss = mse + model.kld_weight * kld + spec_weight * multi_spec
+        loss = mse + kld_weight * kld + spec_weight * multi_spec
     else:
         pred = model(seq)
         loss = F.mse_loss(pred, seq)
