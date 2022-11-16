@@ -1,11 +1,12 @@
 # @package _global_
 process:
   train: true
-  cross_val_k: 0
+  cross_val_k: 1
 
 logging:
   exp_name: smoke
   checkpoint: 10
+  save_pred: true
 
 data:
   data_tar: /scratch/other/sopi/CCREAIM/datasets/test/out/chopped_65536.tar

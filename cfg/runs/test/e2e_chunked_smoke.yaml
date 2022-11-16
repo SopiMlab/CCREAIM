@@ -8,9 +8,8 @@ logging:
   load_model_path: /home/baffyb1/CCREAIM/CCREAIM/logs/multirun/2022-11-16/e2e-chunked_train_15-34-10/0/checkpoints/e2e-chunked_seqlen-4096_bs-4_lr-1e-06_seed-0_ep-100.pt
   # Data
   save_pred: true
+  save_one_per_batch: false
   pred_output: /scratch/other/sopi/CCREAIM/datasets/test/out/pred_chunked_e2e_ae
-  save_encoder_output: false
-  encoder_output: /scratch/other/sopi/CCREAIM/datasets/test/out/enc
 
 data:
   data_tar: /scratch/other/sopi/CCREAIM/datasets/test/out/chopped_65536.tar

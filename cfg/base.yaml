@@ -26,13 +26,14 @@ logging:
   checkpoint: 5
   # Output saving
   save_pred: false
-  pred_output: /scratch/other/sopi/CCREAIM/datasets/test/out/pred
+  save_one_per_batch: true
+  pred_output: ${hydra:sweep.dir}/${hydra:sweep.subdir}/predictions
   save_encoder_output: false
   encoder_output: /scratch/other/sopi/CCREAIM/datasets/test/out/enc
 
-# number of cross val splits, 0=only training, 1=only one validation set
 process:
   train: ???
+  # number of cross val splits, 0= only training, 1= run testing on the training set, 1< number of splits
   cross_val_k: ???
 
 resources:
