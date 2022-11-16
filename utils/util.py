@@ -4,14 +4,14 @@ import math
 import random
 import tarfile
 from pathlib import Path
-from typing import List
+from typing import List, Union
 
 import numpy as np
 import torch
 import torchaudio
 from torch.nn import functional as F
 
-from model import ae, transformer, vae, vqvae
+from model import ae, e2e_chunked, transformer, vae, vqvae
 from utils import cfg_classes
 
 log = logging.getLogger(__file__)
@@ -31,7 +31,9 @@ def chop_sample(sample: torch.Tensor, sample_length: int) -> List[torch.Tensor]:
     n_chops = len(sample) // sample_length
     for s in range(n_chops - 1):
         chopped_samples_list.append(sample[s * sample_length : (s + 1) * sample_length])
-    chopped_samples_list.append(sample[n_chops * sample_length :])
+    remainder = sample[n_chops * sample_length :]
+    if remainder.size(0) > 0:
+        chopped_samples_list.append(remainder)
     return chopped_samples_list
 
 
@@ -139,19 +141,44 @@ def multispectral_loss(
 
 def step(
     model: torch.nn.Module,
-    seq: torch.Tensor,
+    batch: Union[tuple[torch.Tensor, str], tuple[torch.Tensor, str, torch.Tensor]],
     device: torch.device,
     cfg: cfg_classes.BaseConfig,
 ) -> tuple[torch.Tensor, torch.Tensor, dict[str, float]]:
     info: dict[str, float] = {}
     if isinstance(model, transformer.Transformer):
+        seq, _ = batch
+        seq.to(device)
         src = seq[:, :-1, :]
         tgt = seq[:, 1:, :]
         tgt_mask = model.get_tgt_mask(tgt.size(1))
         tgt_mask = tgt_mask.to(device)
         pred = model(src, tgt, tgt_mask)
         loss = F.mse_loss(pred, tgt)
+    elif isinstance(model, e2e_chunked.E2EChunked):
+        seq, _, pad_mask = batch
+        seq.to(device)
+        pad_mask.to(device)
+        pred = model(seq, pad_mask, device)
+        tgt = seq[:, 1:, :]
+        mse = F.mse_loss(pred, tgt)
+        spec_weight = cfg.hyper.spectral_loss.weight
+        multi_spec = [
+            multispectral_loss(t, p, cfg)
+            for t, p in zip(tgt.transpose(0, 1), pred.transpose(0, 1))
+        ]
+        multi_spec = torch.cat(multi_spec)
+        multi_spec = multi_spec.sum()
+        info.update(
+            {
+                "loss_mse": float(mse.item()),
+                "loss_spectral": spec_weight * multi_spec.item(),
+            }
+        )
+        loss = mse + spec_weight * multi_spec
     elif isinstance(model, vae.VAE):
+        seq, _ = batch
+        seq.to(device)
         pred, mu, sigma = model(seq)
         mse = F.mse_loss(pred, seq)
         kld = -0.5 * (1 + torch.log(sigma**2) - mu**2 - sigma**2).sum()
@@ -165,6 +192,7 @@ def step(
             }
         )
         loss = mse + model.kld_weight * kld + spec_weight * multi_spec
+
     else:
         pred = model(seq)
         loss = F.mse_loss(pred, seq)

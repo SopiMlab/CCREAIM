@@ -1,7 +1,11 @@
+import logging
 import math
+from typing import Optional
 
 import torch
 from torch import nn
+
+log = logging.getLogger(__name__)
 
 
 class PositionalEncoding(nn.Module):
@@ -75,7 +79,13 @@ class Transformer(nn.Module):
         self,
         src: torch.Tensor,
         tgt: torch.Tensor,
-        tgt_mask: torch.Tensor,
+        *,
+        src_mask: Optional[torch.Tensor] = None,
+        tgt_mask: Optional[torch.Tensor] = None,
+        memory_mask: Optional[torch.Tensor] = None,
+        src_key_padding_mask: Optional[torch.Tensor] = None,
+        tgt_key_padding_mask: Optional[torch.Tensor] = None,
+        memory_key_padding_mask: Optional[torch.Tensor] = None,
     ):
         # Src size must be (batch_size, src sequence length)
         # Tgt size must be (batch_size, tgt sequence length)
@@ -89,8 +99,11 @@ class Transformer(nn.Module):
             src,
             tgt,
             tgt_mask=tgt_mask,
-            # src_key_padding_mask=src_pad_mask,
-            # tgt_key_padding_mask=tgt_pad_mask,
+            src_mask=src_mask,
+            memory_mask=memory_mask,
+            src_key_padding_mask=src_key_padding_mask,
+            tgt_key_padding_mask=tgt_key_padding_mask,
+            memory_key_padding_mask=memory_key_padding_mask,
         )
 
         return out

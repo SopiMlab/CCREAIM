@@ -5,7 +5,7 @@ import torch.utils.data
 from sklearn.model_selection import KFold
 
 import wandb
-from model import ae, end_to_end, transformer, vae, vqvae
+from model import ae, e2e, e2e_chunked, transformer, vae, vqvae
 from utils import cfg_classes, test, train, util
 
 log = logging.getLogger(__name__)
@@ -28,9 +28,13 @@ def cross_validation(
         )
     elif cfg.hyper.model == "transformer":
         get_model = lambda: transformer.get_transformer("base", cfg.hyper.latent_dim)
-    elif cfg.hyper.model == "end-to-end":
-        get_model = lambda: end_to_end.get_end_to_end(
-            "base_ae", cfg.hyper.seq_len, 10, cfg.hyper.latent_dim
+    elif cfg.hyper.model == "e2e":
+        get_model = lambda: e2e.get_e2e(
+            "base_ae", cfg.hyper.seq_len, 16, cfg.hyper.latent_dim
+        )
+    elif cfg.hyper.model == "e2e-chunked":
+        get_model = lambda: e2e_chunked.get_e2e_chunked(
+            "base_ae", cfg.hyper.seq_len, 16, cfg.hyper.latent_dim
         )
     else:
         raise ValueError(f"Model type {cfg.hyper.model} is not defined!")
