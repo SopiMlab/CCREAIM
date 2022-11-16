@@ -14,6 +14,7 @@ class LoggingConfig:
     checkpoint: int
     # Output saving
     save_pred: bool
+    save_one_per_batch: bool
     pred_output: str
     save_encoder_output: bool
     encoder_output: str
@@ -30,7 +31,7 @@ class ProcessConfig:
     # training or only testing
     train: bool
     # number of cross val splits
-    # if 0=only training no validation, if 1=only one validation set etc.
+    # number of cross val splits, 0= only training, 1= run testing on the training set, 1< number of splits
     cross_val_k: int
 
 

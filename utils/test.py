@@ -1,4 +1,5 @@
 import logging
+import random
 from pathlib import Path
 
 import torch
@@ -38,31 +39,24 @@ def test(
     model.eval()
     with torch.no_grad():
         running_loss = torch.tensor(0.0)
-        for batchnum, (seq, name) in enumerate(dataloader):
-            seq = seq.to(device)
-            loss, pred, _ = util.step(model, seq, device, cfg)
+        for batchnum, batch in enumerate(dataloader):
+            loss, pred, _ = util.step(model, batch, device, cfg)
 
             if cfg.logging.save_pred:
-                for p, n in zip(pred, name):
-                    save_path = Path(cfg.logging.pred_output) / Path(n).name
-                    if cfg.hyper.model == "transformer":
-                        torch.save(p, save_path)
-                    elif cfg.hyper.model == "e2e-chunked":
-                        torchaudio.save(  # type: ignore
-                            save_path,
-                            p.flatten().unsqueeze(0),
-                            16000,
-                            encoding="PCM_F",
-                            bits_per_sample=32,
-                        )
-                    else:
-                        torchaudio.save(  # type: ignore
-                            save_path, p, 16000, encoding="PCM_F", bits_per_sample=32
-                        )
+                save_root = Path(cfg.logging.pred_output)
+                save_root.mkdir(exist_ok=True)
+                if cfg.logging.save_one_per_batch:
+                    p, n = random.choice(list(zip(pred, batch[1])))
+                    save_path = save_root / Path(n).name
+                    util.save_model_prediction(cfg.hyper.model, p, save_path)
+                else:
+                    for p, n in zip(pred, batch[1]):
+                        save_path = save_root / Path(n).name
+                        util.save_model_prediction(cfg.hyper.model, p, save_path)
 
             if cfg.logging.save_encoder_output:
                 feat = model.encode(seq)  # type: ignore
-                for f, n in zip(feat, name):
+                for f, n in zip(feat, batch[1]):
                     save_path = Path(cfg.logging.encoder_output) / Path(n).stem
                     torch.save(f.clone(), str(save_path) + ".pt")
 

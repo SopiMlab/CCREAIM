@@ -58,7 +58,7 @@ def _create_e2e_chunked_ae(seq_length: int, seq_num: int, latent_dim: int):
     decoder = ae.Decoder(seq_length, latent_dim, encoder.output_lengths)
     trf = transformer.Transformer(
         dim_model=latent_dim * encoder.output_lengths[-1],
-        num_heads=2,
+        num_heads=latent_dim // 4,
         num_encoder_layers=1,
         num_decoder_layers=1,
         dropout_p=0.1,

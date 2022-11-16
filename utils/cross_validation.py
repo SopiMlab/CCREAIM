@@ -66,6 +66,23 @@ def cross_validation(
 
             log.info(f"FOLD {fold}/{cfg.process.cross_val_k} VALIDATION STARTED")
             test.test(model, test_loader, device, cfg, fold)
+
+    elif cfg.process.cross_val_k == 1:
+        model = get_model()
+        model.to(device)
+        optimizer = torch.optim.Adam(model.parameters(), cfg.hyper.learning_rate)
+        dataloader = torch.utils.data.DataLoader(
+            dataset,
+            batch_size=cfg.hyper.batch_size,
+            shuffle=cfg.data.shuffle,
+            num_workers=cfg.resources.num_workers,
+        )
+        log.info(f"TRAINING STARTED")
+        train.train(model, dataloader, optimizer, device, cfg)
+
+        log.info(f"VALIDATION STARTED")
+        test.test(model, dataloader, device, cfg)
+
     else:
         model = get_model()
         model.to(device)

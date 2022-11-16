@@ -63,6 +63,23 @@ def chop_dataset(in_root: str, out_tar_file_path: str, ext: str, sample_length: 
                     out_tar.addfile(out_info, buffer)
 
 
+def save_model_prediction(model_name: str, pred: torch.Tensor, save_path: Path) -> None:
+    if model_name == "transformer":
+        torch.save(pred, save_path)
+    elif model_name == "e2e-chunked":
+        torchaudio.save(  # type: ignore
+            save_path,
+            pred.flatten().unsqueeze(0),
+            16000,
+            encoding="PCM_F",
+            bits_per_sample=32,
+        )
+    else:
+        torchaudio.save(  # type: ignore
+            save_path, pred, 16000, encoding="PCM_F", bits_per_sample=32
+        )
+
+
 def get_sample_path_list(data_root: Path, ext: str = "mp3") -> List[Path]:
     return list(data_root.rglob(f"*.{ext}"))
 
@@ -153,7 +170,7 @@ def step(
     info: dict[str, float] = {}
     if isinstance(model, transformer.Transformer):
         seq, _ = batch
-        seq.to(device)
+        seq = seq.to(device)
         src = seq[:, :-1, :]
         tgt = seq[:, 1:, :]
         tgt_mask = model.get_tgt_mask(tgt.size(1))
@@ -162,8 +179,8 @@ def step(
         loss = F.mse_loss(pred, tgt)
     elif isinstance(model, e2e_chunked.E2EChunked):
         seq, _, pad_mask = batch
-        seq.to(device)
-        pad_mask.to(device)
+        seq = seq.to(device)
+        pad_mask = pad_mask.to(device)
         pred = model(seq, pad_mask, device)
         tgt = seq[:, 1:, :]
         tgt_pad_mask = pad_mask[:, 1:]
@@ -183,7 +200,7 @@ def step(
         loss = mse + spec_weight * multi_spec
     elif isinstance(model, vae.VAE):
         seq, _ = batch
-        seq.to(device)
+        seq = seq.to(device)
         pred, mu, sigma = model(seq)
         mse = F.mse_loss(pred, seq)
         kld_weight = cfg.hyper.kld_loss.weight
