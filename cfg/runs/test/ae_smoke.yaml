@@ -1,14 +1,15 @@
 # @package _global_
-
-train: false
+process:
+  train: false
+  cross_val_k: 0
 
 data:
-  original_data_root: /scratch/other/sopi/CCREAIM/datasets/test/in
-  data_root: /scratch/other/sopi/CCREAIM/datasets/test/out
+  data_tar: /scratch/other/sopi/CCREAIM/datasets/test/out/chopped_65536.tar
 
 hyper:
   model: ae
   seed: 0
+  latent_dim: 16
   seq_len: 1000
   epochs: 10
   batch_size: 8

@@ -1,7 +1,11 @@
+import logging
 import math
+from typing import Optional
 
 import torch
 from torch import nn
+
+log = logging.getLogger(__name__)
 
 
 class PositionalEncoding(nn.Module):
@@ -38,7 +42,7 @@ class PositionalEncoding(nn.Module):
             x: Tensor, shape [batch_size, seq_len, embedding_dim]
         """
         # Residual connection + pos encoding
-        return self.dropout(x + self.pos_encoding[:, : x.size(1), :])
+        return self.dropout(x + self.pos_encoding[:, : x.size(1), :])  # type: ignore
 
 
 class Transformer(nn.Module):
@@ -71,13 +75,17 @@ class Transformer(nn.Module):
             batch_first=True,
         )
 
-        self.loss_fn = nn.MSELoss()
-
     def forward(
         self,
         src: torch.Tensor,
         tgt: torch.Tensor,
-        tgt_mask: torch.Tensor = None,
+        *,
+        src_mask: Optional[torch.Tensor] = None,
+        tgt_mask: Optional[torch.Tensor] = None,
+        memory_mask: Optional[torch.Tensor] = None,
+        src_key_padding_mask: Optional[torch.Tensor] = None,
+        tgt_key_padding_mask: Optional[torch.Tensor] = None,
+        memory_key_padding_mask: Optional[torch.Tensor] = None,
     ):
         # Src size must be (batch_size, src sequence length)
         # Tgt size must be (batch_size, tgt sequence length)
@@ -91,8 +99,11 @@ class Transformer(nn.Module):
             src,
             tgt,
             tgt_mask=tgt_mask,
-            # src_key_padding_mask=src_pad_mask,
-            # tgt_key_padding_mask=tgt_pad_mask,
+            src_mask=src_mask,
+            memory_mask=memory_mask,
+            src_key_padding_mask=src_key_padding_mask,
+            tgt_key_padding_mask=tgt_key_padding_mask,
+            memory_key_padding_mask=memory_key_padding_mask,
         )
 
         return out
@@ -106,10 +117,10 @@ class Transformer(nn.Module):
         return mask
 
 
-def get_transformer(name: str) -> Transformer:
+def get_transformer(name: str, latent_dim: int) -> Transformer:
     if name == "base":
         return Transformer(
-            dim_model=256,
+            dim_model=latent_dim,
             num_heads=8,
             num_encoder_layers=1,
             num_decoder_layers=1,

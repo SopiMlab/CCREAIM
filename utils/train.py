@@ -3,12 +3,12 @@ from pathlib import Path
 
 import torch
 import torch.utils.data
+from omegaconf import OmegaConf
 
 import wandb
-from model import ae, transformer, vae, vqvae
-from utils import cfg_classes, dataset, util
+from utils import cfg_classes, util
 
-log = logging.getLogger(__file__)
+log = logging.getLogger(__name__)
 
 
 def train(
@@ -17,47 +17,55 @@ def train(
     optimizer,  # torch optimizer
     device: torch.device,
     cfg: cfg_classes.BaseConfig,
+    fold: int = 0,
 ):
 
+    if cfg.logging.wandb:
+        wandb_group_name = f"{cfg.hyper.model}-{cfg.logging.exp_name}"
+        wandb_exp_name = (
+            f"{cfg.hyper.model}-{cfg.logging.exp_name}-train-seed:{str(cfg.hyper.seed)}"
+        )
+        if fold != 0:
+            wandb_exp_name += f"-fold:{fold}"
+
+        wandb.init(
+            project="ccreaim",
+            entity="ccreaim",
+            name=wandb_exp_name,
+            group=wandb_group_name,
+            config=OmegaConf.to_container(cfg),  # type: ignore
+        )
+        wandb.config.update({"time": cfg.logging.run_id})
+
     checkpoints_path, model_name = util.get_model_path(cfg)
-    checkpoints_path.mkdir(exist_ok=True)
+    if cfg.process.cross_val_k > 1 and fold != 0:
+        checkpoints_path /= Path(f"fold_{fold}")
+    checkpoints_path.mkdir(exist_ok=True, parents=True)
 
     model.train()
     for epoch in range(1, cfg.hyper.epochs + 1):
         running_loss = torch.tensor(0.0)
-        for batchnum, seq in enumerate(dataloader):
-            seq = seq.to(device)
-            if isinstance(model, transformer.Transformer):
-                src = seq[:, :-1, :]
-                tgt = seq[:, 1:, :]
-                tgt_mask = model.get_tgt_mask(tgt.size(1))
-                tgt_mask = tgt_mask.to(device)
-                pred = model(src, tgt, tgt_mask)
-                loss = model.loss_fn(pred, tgt)
-            elif isinstance(model, vae.VAE):
-                pred, mu, sigma = model(seq)
-                loss = model.loss_fn(pred, seq, mu, sigma)
-            else:
-                pred = model(seq)
-                loss = model.loss_fn(pred, seq)
-
-            running_loss += loss.detach().cpu().item()
+        for batchnum, batch in enumerate(dataloader):
+            loss, _, info = util.step(model, batch, device, cfg)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
 
+            running_loss += loss.detach().cpu().item()
             if not cfg.logging.silent and batchnum % 100 == 0:
                 log.info(
                     f"epoch: {epoch:03d}/{cfg.hyper.epochs:03d} - batch: {batchnum:05d}/{len(dataloader):05d} - loss: {loss}"
                 )
             if cfg.logging.wandb:
-                wandb.log({"loss": loss})
+                wandb.log(
+                    {"train/loss": loss, "epoch": epoch, "batch": batchnum, **info}
+                )
 
         if not cfg.logging.silent:
             log.info(f"Epoch {epoch} complete, total loss: {running_loss}")
 
         if cfg.logging.checkpoint != 0 and epoch % cfg.logging.checkpoint == 0:
-            save_path = checkpoints_path / Path(f"{model_name}_ep-{epoch:03d}.pth")
+            save_path = checkpoints_path / Path(f"{model_name}_ep-{epoch:03d}.pt")
             torch.save(
                 {
                     "epoch": epoch,
@@ -70,7 +78,7 @@ def train(
             )
 
     # Save final model
-    final_save_path = checkpoints_path / Path(f"{model_name}_final.pth")
+    final_save_path = checkpoints_path / Path(f"{model_name}_final.pt")
     torch.save(
         {
             "epoch": cfg.hyper.epochs,
@@ -81,3 +89,6 @@ def train(
         },
         final_save_path,
     )
+
+    if cfg.logging.wandb:
+        wandb.finish()

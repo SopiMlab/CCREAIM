@@ -1,20 +1,36 @@
 import logging
-from pathlib import Path
+import tarfile
 
 import hydra
-import submitit
 import torch
 import torch.utils.data
 from hydra.core.config_store import ConfigStore
+from hydra.core.utils import JobReturn, JobStatus
+from hydra.experimental.callback import Callback
 from omegaconf import OmegaConf
 
-import wandb
-from model import ae, transformer, vae, vqvae
 from utils import cfg_classes, dataset, util
+from utils.cross_validation import cross_validation
 from utils.test import test
-from utils.train import train
 
-log = logging.getLogger(__file__)
+log = logging.getLogger(__name__)
+
+OmegaConf.register_new_resolver("eval", eval)
+
+
+class LogJobReturnCallback(Callback):
+    def __init__(self) -> None:
+        self.log = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+
+    def on_job_end(
+        self, config: cfg_classes.BaseConfig, job_return: JobReturn, **kwargs
+    ) -> None:
+        if job_return.status == JobStatus.COMPLETED:
+            self.log.info(f"Succeeded with return value: {job_return.return_value}")
+        elif job_return.status == JobStatus.FAILED:
+            self.log.error("", exc_info=job_return._return_value)
+        else:
+            self.log.error("Status unknown. This should never happen.")
 
 
 @hydra.main(version_base=None, config_path="cfg", config_name="base")
@@ -27,84 +43,47 @@ def main(cfg: cfg_classes.BaseConfig):
     Raises:
         ValueError: if misconfiguration
     """
-    env = submitit.JobEnvironment()
-
     log.info(OmegaConf.to_yaml(cfg))
-
-    if cfg.logging.wandb:
-        wandb.init(
-            project="ccreaim",
-            entity="ccreaim",
-            name=f"{cfg.hyper.model}-{cfg.logging.exp_name}-{str(cfg.hyper.seed)}-{cfg.logging.run_id}",
-            group=f"{cfg.hyper.model}-{cfg.logging.exp_name}",
-            config=cfg,
-        )
 
     util.set_seed(cfg.hyper.seed)
 
-    # Fetch the model:
-    # if training initialize a new model, if testing load an existing trained one
-    if cfg.train:
-        if cfg.hyper.model == "ae":
-            model = ae.get_autoencoder("base", cfg.hyper.seq_len)
-        elif cfg.hyper.model == "vae":
-            model = vae.get_vae("base", cfg.hyper.seq_len)
-        elif cfg.hyper.model == "vq-vae":
-            model = None
-        elif cfg.hyper.model == "transformer":
-            model = transformer.get_transformer("base")
-        elif cfg.hyper.model == "end-to-end":
-            model = None
-        else:
-            raise ValueError(f"Model type {cfg.hyper.model} is not defined!")
-    else:
-        checkpoint = torch.load(cfg.logging.load_model_path)
-        model = checkpoint["model"]
+    # Use gpu if available, move the model to device
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+
+    tmp_data_root = dataset.prepare_dataset_on_tmp(data_tar=cfg.data.data_tar, cfg=cfg)
 
     # Get the dataset, use audio data for any non-transformer model,
     # feature data for transformers
-    if cfg.hyper.model != "transformer":
-        data_root_sample_len = Path(cfg.data.data_root) / Path(
-            "chopped_" + str(cfg.hyper.seq_len)
-        )
-        if not data_root_sample_len.exists():
-            log.info(
-                "Creating new chopped dataset with sample length: "
-                + str(data_root_sample_len)
-            )
-            data_root_sample_len.mkdir()
-            util.chop_dataset(
-                cfg.data.original_data_root,
-                str(data_root_sample_len),
-                "mp3",
-                cfg.hyper.seq_len,
-            )
-        # Sound dataset. Return name if testing
-        data = dataset.AudioDataset(
-            data_root_sample_len, cfg.hyper.seq_len, return_name=not cfg.train
-        )
 
-    else:
-        data_root = Path(cfg.data.data_root)
-        if not data_root.exists():
-            raise ValueError("Data folder does not exist: " + cfg.data.data_root)
+    # Get the dataset, use audio data for any non-transformer model,
+    # feature data for transformers
+    if cfg.hyper.model == "transformer":
         # Feature dataset
-        data = dataset.FeatureDataset(data_root)
-
-    # Make a dataloader
-    dataloader = torch.utils.data.DataLoader(
-        data, batch_size=cfg.hyper.batch_size, shuffle=cfg.data.shuffle, num_workers=2
-    )
-
-    # Use gpu if available, move the model to device
-    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    model = model.to(device)
+        data = dataset.FeatureDataset(tmp_data_root)
+    elif cfg.hyper.model == "e2e-chunked":
+        # Chunked sound dataset
+        data = dataset.ChunkedAudioDataset(tmp_data_root, cfg.hyper.seq_len, seq_num=16)
+    else:
+        # Sound dataset
+        data = dataset.AudioDataset(tmp_data_root, cfg.hyper.seq_len)
 
     # Train/test
-    if cfg.train:
-        optimizer = torch.optim.Adam(model.parameters(), cfg.hyper.learning_rate)
-        train(model, dataloader, optimizer, device, cfg)
+    if cfg.process.train:
+        cross_validation(data, device, cfg)
     else:
+        # Fetch the model:
+        # testing load an existing trained one
+        checkpoint = torch.load(cfg.logging.load_model_path, map_location="cpu")
+        model = checkpoint["model"]
+        model = model.to(device)
+
+        # Make a dataloader
+        dataloader = torch.utils.data.DataLoader(
+            data,
+            batch_size=cfg.hyper.batch_size,
+            shuffle=cfg.data.shuffle,
+            num_workers=cfg.resources.num_workers,
+        )
         test(model, dataloader, device, cfg)
 
 

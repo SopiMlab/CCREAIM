@@ -1,6 +1,5 @@
 import torch
 from torch import nn
-from torch.nn import functional as F
 
 from model import ae
 
@@ -19,15 +18,6 @@ class VQVAE(nn.Module):
         d = self.decoder(z)
         return d  # , mu, sigma
 
-    def loss_fn(
-        self,
-        pred: torch.Tensor,
-        data: torch.Tensor,
-        beta: float = 1.0,
-    ):
-        mse = F.mse_loss(pred, data)
-        return mse
-
 
 class VectorQuantizer(nn.Module):
     def __init__(self, num_embeddings: int, embedding_dim: int, beta: float = 0.25):
@@ -44,15 +34,15 @@ class VectorQuantizer(nn.Module):
         return
 
 
-def _create_vqvae(seq_length: int):
-    encoder = ae.Encoder(seq_length)
-    decoder = ae.Decoder(seq_length, encoder.output_lengths)
-    reparam = VectorQuantizer()
+def _create_vqvae(seq_length: int, latent_dim: int):
+    encoder = ae.Encoder(seq_length, latent_dim)
+    decoder = ae.Decoder(seq_length, latent_dim, encoder.output_lengths)
+    reparam = VectorQuantizer(200, 256)
     return VQVAE(encoder, decoder, reparam)
 
 
-def get_vqvae(name: str, seq_length: int):
+def get_vqvae(name: str, seq_length: int, latent_dim: int):
     if name == "base":
-        return _create_vqvae(seq_length)
+        return _create_vqvae(seq_length, latent_dim)
     else:
         raise ValueError("Unknown autoencoder name: '{}'".format(name))

@@ -1,0 +1,18 @@
+# @package _global_
+process:
+  train: true
+  cross_val_k: 0
+
+logging:
+  exp_name: smoke
+
+data:
+  data_tar: ???
+
+hyper:
+  model: transformer
+  seed: 0
+  seq_len: 1000
+  epochs: 5
+  batch_size: 8
+  learning_rate: 1e-4

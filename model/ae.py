@@ -1,5 +1,6 @@
 from torch import nn
 
+from model.resnet import Resnet1D
 from utils import util
 
 """
@@ -30,12 +31,8 @@ def create_conv1d_layer(
 
 
 class Encoder(nn.Module):
-    def __init__(self, seq_length):
+    def __init__(self, seq_length: int, latent_dim: int):
         super().__init__()
-
-        # Latent space dimension
-        latent_dim = 256
-
         # The negative slope coefficient for leaky ReLU
         leaky_relu_alpha = 0.2
 
@@ -161,11 +158,8 @@ def create_convtranspose1d_layer(
 
 
 class Decoder(nn.Module):
-    def __init__(self, seq_length, output_lengths):
+    def __init__(self, seq_length: int, latent_dim: int, output_lengths: list[int]):
         super().__init__()
-
-        # Latent space dimension
-        latent_dim = 256
 
         # The negative slope coefficient for leaky ReLU
         leaky_relu_alpha = 0.2
@@ -279,8 +273,6 @@ class AutoEncoder(nn.Module):
         self.encoder = encoder
         self.decoder = decoder
         self.net = nn.Sequential(self.encoder, self.decoder)
-        # TODO parameterise these
-        self.loss_fn = nn.MSELoss()
 
     def forward(self, input_data):
         return self.net(input_data)
@@ -289,14 +281,83 @@ class AutoEncoder(nn.Module):
         return self.encoder(input_data)
 
 
-def _create_autoencoder(seq_length):
-    encoder = Encoder(seq_length)
-    decoder = Decoder(seq_length, encoder.output_lengths)
+# Jukebox imitating ResNet-based AE:
+
+
+class EncoderConvBlock(nn.Module):
+    def __init__(
+        self,
+        input_emb_width,
+        output_emb_width,
+        down_t,
+        stride_t,
+        width,
+        depth,
+        m_conv,
+        dilation_growth_rate=1,
+        dilation_cycle=None,
+        res_scale=False,
+    ):
+        super().__init__()
+        blocks = []
+        filter_t, pad_t = stride_t * 2, stride_t // 2
+        if down_t > 0:
+            for i in range(down_t):
+                block = nn.Sequential(
+                    nn.Conv1d(
+                        input_emb_width if i == 0 else width,
+                        width,
+                        filter_t,
+                        stride_t,
+                        pad_t,
+                    ),
+                    Resnet1D(
+                        width,
+                        depth,
+                        m_conv,
+                        dilation_growth_rate,
+                        dilation_cycle,
+                        zero_out,
+                        res_scale,
+                    ),
+                )
+                blocks.append(block)
+            block = nn.Conv1d(width, output_emb_width, 3, 1, 1)
+            blocks.append(block)
+        self.model = nn.Sequential(*blocks)
+
+    def forward(self, x):
+        return self.model(x)
+
+
+class DecoderConvBlock(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+
+class ResEncoder(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+
+class ResDecoder(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+
+class ResAutoEncoder(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+
+def _create_autoencoder(seq_length: int, latent_dim: int):
+    encoder = Encoder(seq_length, latent_dim)
+    decoder = Decoder(seq_length, latent_dim, encoder.output_lengths)
     return AutoEncoder(encoder, decoder)
 
 
-def get_autoencoder(name: str, seq_length: int):
+def get_autoencoder(name: str, seq_length: int, latent_dim: int):
     if name == "base":
-        return _create_autoencoder(seq_length)
+        return _create_autoencoder(seq_length, latent_dim)
     else:
         raise ValueError("Unknown autoencoder name: '{}'".format(name))

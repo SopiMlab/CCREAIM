@@ -6,29 +6,24 @@ from model import ae
 
 
 class VAE(nn.Module):
-    def __init__(self, encoder: nn.Module, decoder: nn.Module, reparam: nn.Module):
+    def __init__(
+        self,
+        encoder: nn.Module,
+        decoder: nn.Module,
+        reparam: nn.Module,
+        kld_weight: float = 0.05,
+    ):
         super().__init__()
         self.encoder = encoder
         self.reparam = reparam
         self.decoder = decoder
+        self.kld_weight = kld_weight
 
     def forward(self, data: torch.Tensor):
         e = self.encoder(data)
         z, mu, sigma = self.reparam(e)
         d = self.decoder(z)
         return d, mu, sigma
-
-    def loss_fn(
-        self,
-        pred: torch.Tensor,
-        data: torch.Tensor,
-        mu: torch.Tensor,
-        sigma: torch.Tensor,
-        kld_weight: float = 1.0,
-    ):
-        mse = F.mse_loss(pred, data)
-        kld = (sigma**2 + mu**2 - torch.log(sigma) - 1 / 2).sum()
-        return mse + kld_weight * kld
 
 
 class Reparametrization(nn.Module):
@@ -50,15 +45,15 @@ class Reparametrization(nn.Module):
         return z, mu, sigma
 
 
-def _create_vae(seq_length: int):
-    encoder = ae.Encoder(seq_length)
-    decoder = ae.Decoder(seq_length, encoder.output_lengths)
-    reparam = Reparametrization(encoder.output_lengths[-1], 256)
+def _create_vae(seq_length: int, latent_dim: int):
+    encoder = ae.Encoder(seq_length, latent_dim)
+    decoder = ae.Decoder(seq_length, latent_dim, encoder.output_lengths)
+    reparam = Reparametrization(encoder.output_lengths[-1], latent_dim)
     return VAE(encoder, decoder, reparam)
 
 
-def get_vae(name: str, seq_length: int):
+def get_vae(name: str, seq_length: int, latent_dim: int):
     if name == "base":
-        return _create_vae(seq_length)
+        return _create_vae(seq_length, latent_dim)
     else:
         raise ValueError("Unknown autoencoder name: '{}'".format(name))

@@ -1,0 +1,54 @@
+# @package _global_
+process:
+  train: true
+  cross_val_k: 0
+
+logging:
+  exp_name: system
+  checkpoint: 2
+
+data:
+  data_tar: /scratch/other/sopi/CCREAIM/datasets/chopped_65536.tar
+
+hyper:
+  model: vae
+  seed: 0
+  latent_dim: null #1,2,4,8
+  seq_len: 65536
+  epochs: 30
+  batch_size: 32
+  learning_rate: 1e-5
+  kld_loss:
+    weight: 1e-3
+  spectral_loss:
+    weight: 1e-4
+    stft_bins:
+      - 2048
+      - 1024
+      - 512
+    stft_hop_length:
+      - 240
+      - 120
+      - 50
+    stft_window_size:
+      - 1200
+      - 600
+      - 240
+
+resources:
+  num_workers: 2
+  # General resource configs
+  timeout_min: 1000
+  cpus_per_task: null
+  gpus_per_node: null
+  tasks_per_node: 1
+  mem_gb: 8
+  nodes: 1
+
+  # Slurm resource configs
+  gres: null
+  cpus_per_gpu: 1
+  gpus_per_task: 1
+  mem_per_gpu: null
+  mem_per_cpu: null
+  max_num_timeout: 0
