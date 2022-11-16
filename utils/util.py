@@ -138,8 +138,8 @@ def multispectral_loss(
     for n_bins, hop_length, window_size in zip(*args):
         stft_val = STFTValues(n_bins, hop_length, window_size)
         for i in range(losses.size(-1)):
-            spec_in = spec(seq[:, i].squeeze(), stft_val)
-            spec_out = spec(pred[:, i].squeeze(), stft_val)
+            spec_in = spec(seq[:, i], stft_val)
+            spec_out = spec(pred[:, i], stft_val)
             losses[:, i] = norm(spec_in - spec_out)
     return losses
 
