@@ -64,8 +64,6 @@ data:
   data_tar: ???
   shuffle: true
 
-# Parameters for slurm
-
 # Hyperparameters for runs (needed for loading the correct model)
 hyper:
   seed: ???

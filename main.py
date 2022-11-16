@@ -57,13 +57,15 @@ def main(cfg: cfg_classes.BaseConfig):
 
     # Get the dataset, use audio data for any non-transformer model,
     # feature data for transformers
-    if cfg.hyper.model != "transformer":
-        # Sound dataset
-        data = dataset.AudioDataset(tmp_data_root, cfg.hyper.seq_len)
-
-    else:
+    if cfg.hyper.model == "transformer":
         # Feature dataset
         data = dataset.FeatureDataset(tmp_data_root)
+    elif cfg.hyper.model == "e2e-chunked":
+        # Chunked sound dataset
+        data = dataset.ChunkedAudioDataset(tmp_data_root, cfg.hyper.seq_len, seq_num=16)
+    else:
+        # Sound dataset
+        data = dataset.AudioDataset(tmp_data_root, cfg.hyper.seq_len)
 
     # Train/test
     if cfg.process.train:

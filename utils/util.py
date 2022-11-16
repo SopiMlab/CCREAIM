@@ -4,17 +4,17 @@ import math
 import random
 import tarfile
 from pathlib import Path
-from typing import List
+from typing import List, Union
 
 import numpy as np
 import torch
 import torchaudio
 from torch.nn import functional as F
 
-from model import ae, transformer, vae, vqvae
+from model import ae, e2e_chunked, transformer, vae, vqvae
 from utils import cfg_classes
 
-log = logging.getLogger(__file__)
+log = logging.getLogger(__name__)
 
 
 def set_seed(seed: int):
@@ -31,7 +31,9 @@ def chop_sample(sample: torch.Tensor, sample_length: int) -> List[torch.Tensor]:
     n_chops = len(sample) // sample_length
     for s in range(n_chops - 1):
         chopped_samples_list.append(sample[s * sample_length : (s + 1) * sample_length])
-    chopped_samples_list.append(sample[n_chops * sample_length :])
+    remainder = sample[n_chops * sample_length :]
+    if remainder.size(0) > 0:
+        chopped_samples_list.append(remainder)
     return chopped_samples_list
 
 
@@ -122,8 +124,12 @@ def spec(seq: torch.Tensor, stft_val: STFTValues):
 
 def multispectral_loss(
     seq: torch.Tensor, pred: torch.Tensor, cfg: cfg_classes.BaseConfig
-):
-    losses = torch.zeros(seq.shape[0], device=seq.device)
+) -> torch.Tensor:
+    losses = torch.zeros(*seq.size()[:-1], device=seq.device)
+    if losses.ndim == 1:
+        losses = losses.unsqueeze(-1)
+        seq = seq.unsqueeze(1)
+        pred = pred.unsqueeze(1)
     args = (
         cfg.hyper.spectral_loss.stft_bins,
         cfg.hyper.spectral_loss.stft_hop_length,
@@ -131,33 +137,60 @@ def multispectral_loss(
     )
     for n_bins, hop_length, window_size in zip(*args):
         stft_val = STFTValues(n_bins, hop_length, window_size)
-        spec_in = spec(torch.squeeze(seq), stft_val)
-        spec_out = spec(torch.squeeze(pred), stft_val)
-        losses += norm(spec_in - spec_out)
-    return torch.mean(losses)
+        for i in range(losses.size(-1)):
+            spec_in = spec(seq[:, i].squeeze(), stft_val)
+            spec_out = spec(pred[:, i].squeeze(), stft_val)
+            losses[:, i] = norm(spec_in - spec_out)
+    return losses
 
 
 def step(
     model: torch.nn.Module,
-    seq: torch.Tensor,
+    batch: Union[tuple[torch.Tensor, str], tuple[torch.Tensor, str, torch.Tensor]],
     device: torch.device,
     cfg: cfg_classes.BaseConfig,
 ) -> tuple[torch.Tensor, torch.Tensor, dict[str, float]]:
     info: dict[str, float] = {}
     if isinstance(model, transformer.Transformer):
+        seq, _ = batch
+        seq.to(device)
         src = seq[:, :-1, :]
         tgt = seq[:, 1:, :]
         tgt_mask = model.get_tgt_mask(tgt.size(1))
         tgt_mask = tgt_mask.to(device)
         pred = model(src, tgt, tgt_mask)
         loss = F.mse_loss(pred, tgt)
+    elif isinstance(model, e2e_chunked.E2EChunked):
+        seq, _, pad_mask = batch
+        seq.to(device)
+        pad_mask.to(device)
+        pred = model(seq, pad_mask, device)
+        tgt = seq[:, 1:, :]
+        tgt_pad_mask = pad_mask[:, 1:]
+        mse = F.mse_loss(pred, tgt, reduction="none")
+        mse[tgt_pad_mask] = 0
+        mse = mse.mean()
+        spec_weight = cfg.hyper.spectral_loss.weight
+        multi_spec = multispectral_loss(tgt, pred, cfg)
+        multi_spec[tgt_pad_mask] = 0
+        multi_spec = multi_spec.mean()
+        info.update(
+            {
+                "loss_mse": float(mse.item()),
+                "loss_spectral": spec_weight * multi_spec.item(),
+            }
+        )
+        loss = mse + spec_weight * multi_spec
     elif isinstance(model, vae.VAE):
+        seq, _ = batch
+        seq.to(device)
         pred, mu, sigma = model(seq)
         mse = F.mse_loss(pred, seq)
         kld_weight = cfg.hyper.kld_loss.weight
         kld = -0.5 * (1 + torch.log(sigma**2) - mu**2 - sigma**2).sum()
         spec_weight = cfg.hyper.spectral_loss.weight
         multi_spec = multispectral_loss(seq, pred, cfg)
+        multi_spec = multi_spec.mean()
         info.update(
             {
                 "loss_mse": float(mse.item()),
@@ -167,6 +200,7 @@ def step(
         )
         loss = mse + kld_weight * kld + spec_weight * multi_spec
     else:
+        seq, _ = batch
         pred = model(seq)
         mse = F.mse_loss(pred, seq)
         spec_weight = cfg.hyper.spectral_loss.weight

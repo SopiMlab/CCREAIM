@@ -47,6 +47,14 @@ def test(
                     save_path = Path(cfg.logging.pred_output) / Path(n).name
                     if cfg.hyper.model == "transformer":
                         torch.save(p, save_path)
+                    elif cfg.hyper.model == "e2e-chunked":
+                        torchaudio.save(  # type: ignore
+                            save_path,
+                            p.flatten().unsqueeze(0),
+                            16000,
+                            encoding="PCM_F",
+                            bits_per_sample=32,
+                        )
                     else:
                         torchaudio.save(  # type: ignore
                             save_path, p, 16000, encoding="PCM_F", bits_per_sample=32

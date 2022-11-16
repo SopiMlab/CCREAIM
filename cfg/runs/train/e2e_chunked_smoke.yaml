@@ -1,0 +1,46 @@
+# @package _global_
+process:
+  train: true
+  cross_val_k: 0
+
+logging:
+  exp_name: smoke
+  checkpoint: 10
+
+data:
+  data_tar: /scratch/other/sopi/CCREAIM/datasets/test/out/chopped_65536.tar
+
+hyper:
+  model: e2e-chunked
+  seed: 0
+  latent_dim: 16
+  seq_len: 4096
+  epochs: 100
+  batch_size: 8
+  learning_rate: 1e-5
+  spectral_loss:
+    weight: 1e-5
+    stft_bins:
+      - 2048
+      - 1024
+      - 512
+    stft_hop_length:
+      - 240
+      - 120
+      - 50
+    stft_window_size:
+      - 1200
+      - 600
+      - 240
+
+resources:
+  # DataLoader num_workers parameter
+  num_workers: 4
+
+  # General resource configs
+  timeout_min: 60
+  cpus_per_task: 6
+  gpus_per_node: 0
+  tasks_per_node: 1
+  mem_gb: 4
+  nodes: 1

@@ -45,9 +45,8 @@ def train(
     model.train()
     for epoch in range(1, cfg.hyper.epochs + 1):
         running_loss = torch.tensor(0.0)
-        for batchnum, (seq, _) in enumerate(dataloader):
-            seq = seq.to(device)
-            loss, _, info = util.step(model, seq, device, cfg)
+        for batchnum, batch in enumerate(dataloader):
+            loss, _, info = util.step(model, batch, device, cfg)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
