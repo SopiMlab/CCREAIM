@@ -284,6 +284,11 @@ class AutoEncoder(nn.Module):
 # Jukebox imitating ResNet-based AE:
 
 
+def assert_shape(x, exp_shape):
+    # This could move to util/be removed from productions version
+    assert x.shape == exp_shape, f"Expected {exp_shape} got {x.shape}"
+
+
 class EncoderConvBlock(nn.Module):
     def __init__(
         self,
@@ -317,7 +322,6 @@ class EncoderConvBlock(nn.Module):
                         m_conv,
                         dilation_growth_rate,
                         dilation_cycle,
-                        zero_out,
                         res_scale,
                     ),
                 )
@@ -331,23 +335,182 @@ class EncoderConvBlock(nn.Module):
 
 
 class DecoderConvBlock(nn.Module):
-    def __init__(self):
+    def __init__(
+        self,
+        input_emb_width,
+        output_emb_width,
+        down_t,
+        stride_t,
+        width,
+        depth,
+        m_conv,
+        dilation_growth_rate=1,
+        dilation_cycle=None,
+        res_scale=False,
+    ):
         super().__init__()
+        blocks = []
+        if down_t > 0:
+            filter_t, pad_t = stride_t * 2, stride_t // 2
+            block = nn.Conv1d(output_emb_width, width, 3, 1, 1)
+            blocks.append(block)
+            for i in range(down_t):
+                block = nn.Sequential(
+                    Resnet1D(
+                        width,
+                        depth,
+                        m_conv,
+                        dilation_growth_rate,
+                        dilation_cycle,
+                        res_scale=res_scale,
+                    ),
+                    nn.ConvTranspose1d(
+                        width,
+                        input_emb_width if i == (down_t - 1) else width,
+                        filter_t,
+                        stride_t,
+                        pad_t,
+                    ),
+                )
+                blocks.append(block)
+        self.model = nn.Sequential(*blocks)
+
+    def forward(self, x):
+        return self.model(x)
 
 
+# For both Encoder and Decoder:
+# input_emb_width = seq_len
+# output_emb_width = latent_dim
 class ResEncoder(nn.Module):
-    def __init__(self):
+    def __init__(
+        self,
+        input_emb_width,
+        output_emb_width,
+        levels,
+        downs_t,
+        strides_t,
+        **block_kwargs,
+    ):
         super().__init__()
+        self.input_emb_width = input_emb_width
+        self.output_emb_width = output_emb_width
+        self.levels = levels
+        self.downs_t = downs_t
+        self.strides_t = strides_t
+
+        block_kwargs_copy = dict(**block_kwargs)
+        level_block = lambda level, down_t, stride_t: EncoderConvBlock(
+            input_emb_width if level == 0 else output_emb_width,
+            output_emb_width,
+            down_t,
+            stride_t,
+            **block_kwargs_copy,
+        )
+        self.level_blocks = nn.ModuleList()
+        iterator = zip(list(range(self.levels)), downs_t, strides_t)
+        for level, down_t, stride_t in iterator:
+            self.level_blocks.append(level_block(level, down_t, stride_t))
+
+    def forward(self, x):
+        N, T = x.shape[0], x.shape[-1]
+        emb = self.input_emb_width
+        assert_shape(x, (N, emb, T))
+        xs = []
+
+        # 64, 32, ...
+        iterator = zip(list(range(self.levels)), self.downs_t, self.strides_t)
+        for level, down_t, stride_t in iterator:
+            level_block = self.level_blocks[level]
+            x = level_block(x)
+            emb, T = self.output_emb_width, T // (stride_t**down_t)
+            # ssert_shape(x, (N, emb, T))
+            xs.append(x)
+
+        return xs
 
 
 class ResDecoder(nn.Module):
-    def __init__(self):
+    def __init__(
+        self,
+        input_emb_width,
+        output_emb_width,
+        levels,
+        downs_t,
+        strides_t,
+        **block_kwargs,
+    ):
         super().__init__()
+        self.input_emb_width = input_emb_width
+        self.output_emb_width = output_emb_width
+        self.levels = levels
+
+        self.downs_t = downs_t
+
+        self.strides_t = strides_t
+
+        level_block = lambda level, down_t, stride_t: DecoderConvBlock(
+            output_emb_width, output_emb_width, down_t, stride_t, **block_kwargs
+        )
+        self.level_blocks = nn.ModuleList()
+        iterator = zip(list(range(self.levels)), downs_t, strides_t)
+        for level, down_t, stride_t in iterator:
+            self.level_blocks.append(level_block(level, down_t, stride_t))
+
+        self.out = nn.Conv1d(output_emb_width, input_emb_width, 3, 1, 1)
+
+    def forward(self, xs, all_levels=True):
+        if all_levels:
+            assert len(xs) == self.levels
+        else:
+            assert len(xs) == 1
+        x = xs[-1]
+        N, T = x.shape[0], x.shape[-1]
+        emb = self.output_emb_width
+        assert_shape(x, (N, emb, T))
+
+        # 32, 64 ...
+        iterator = reversed(
+            list(zip(list(range(self.levels)), self.downs_t, self.strides_t))
+        )
+        for level, down_t, stride_t in iterator:
+            level_block = self.level_blocks[level]
+            x = level_block(x)
+            emb, T = self.output_emb_width, T * (stride_t**down_t)
+            assert_shape(x, (N, emb, T))
+            if level != 0 and all_levels:
+                x = x + xs[level - 1]
+
+        x = self.out(x)
+        return x
 
 
-class ResAutoEncoder(nn.Module):
-    def __init__(self):
-        super().__init__()
+def _create_res_autoencoder(latent_dim):
+    levels = 1  # orig 3
+    downs_t = [3]  # orig (3, 2, 2)
+    strides_t = [2]  # orig (2, 2, 2)
+    input_emb_width = 1
+    output_emb_width = latent_dim  # orig 64
+    block_width = 32
+    block_depth = 2
+    block_m_conv = 1.0
+    block_dilation_growth_rate = 3
+    block_dilation_cycle = None
+
+    block_kwargs = dict(
+        width=block_width,
+        depth=block_depth,
+        m_conv=block_m_conv,
+        dilation_cycle=block_dilation_cycle,
+    )
+
+    encoder = ResEncoder(
+        input_emb_width, output_emb_width, levels, downs_t, strides_t, **block_kwargs
+    )
+    decoder = ResDecoder(
+        input_emb_width, output_emb_width, levels, downs_t, strides_t, **block_kwargs
+    )
+    return AutoEncoder(encoder, decoder)
 
 
 def _create_autoencoder(seq_length: int, latent_dim: int):
@@ -359,5 +522,7 @@ def _create_autoencoder(seq_length: int, latent_dim: int):
 def get_autoencoder(name: str, seq_length: int, latent_dim: int):
     if name == "base":
         return _create_autoencoder(seq_length, latent_dim)
+    elif name == "res-ae":
+        return _create_res_autoencoder(latent_dim)
     else:
         raise ValueError("Unknown autoencoder name: '{}'".format(name))

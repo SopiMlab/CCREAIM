@@ -20,6 +20,10 @@ def cross_validation(
         get_model = lambda: ae.get_autoencoder(
             "base", cfg.hyper.seq_len, cfg.hyper.latent_dim
         )
+    elif cfg.hyper.model == "res-ae":
+        get_model = lambda: ae.get_autoencoder(
+            "res-ae", cfg.hyper.seq_len, cfg.hyper.latent_dim
+        )
     elif cfg.hyper.model == "vae":
         get_model = lambda: vae.get_vae("base", cfg.hyper.seq_len, cfg.hyper.latent_dim)
     elif cfg.hyper.model == "vq-vae":

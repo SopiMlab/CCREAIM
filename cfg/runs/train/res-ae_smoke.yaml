@@ -1,0 +1,33 @@
+# @package _global_
+process:
+  train: true
+  cross_val_k: 0
+
+logging:
+  exp_name: smoke
+
+data:
+  data_tar: /scratch/other/sopi/CCREAIM/datasets/test/out/chopped_65536.tar
+
+hyper:
+  model: res-ae
+  seed: 0
+  latent_dim: 8
+  seq_len: 65536
+  epochs: 2
+  batch_size: 8
+  learning_rate: 1e-4
+  spectral_loss:
+    weight: 1e-2
+    stft_bins:
+      - 2048
+      - 1024
+      - 512
+    stft_hop_length:
+      - 240
+      - 120
+      - 50
+    stft_window_size:
+      - 1200
+      - 600
+      - 240
