@@ -81,6 +81,10 @@ class HyperConfig:
     seed: int
     latent_dim: int
     seq_len: int
+    # number of sequences for e2e_chunked, should be original audio length / seq_len
+    num_seq: int
+    # concatenation moe for e2e_chunked
+    seq_cat: bool
     epochs: int
     batch_size: int
     learning_rate: float

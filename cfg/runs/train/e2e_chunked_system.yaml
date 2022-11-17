@@ -1,25 +1,26 @@
-
 # @package _global_
 process:
   train: true
-  cross_val_k: 0
+  cross_val_k: 1
 
 logging:
   exp_name: system
+  checkpoint: 10
+
 
 data:
   data_tar: /scratch/other/sopi/CCREAIM/datasets/chopped_65536.tar
 
 hyper:
-  model: ae
+  model: e2e-chunked
   seed: 0
-  latent_dim: 16
-  seq_len: 65536
+  latent_dim: 32
+  seq_len: 4096
   epochs: 100
-  batch_size: 8
-  learning_rate: 1e-5
+  batch_size: 64
+  learning_rate: 1e-6
   spectral_loss:
-    weight: 1e-5
+    weight: 1e-3
     stft_bins:
       - 2048
       - 1024
@@ -32,3 +33,15 @@ hyper:
       - 1200
       - 600
       - 240
+
+resources:
+  # DataLoader num_workers parameter
+  num_workers: 4
+
+  # General resource configs
+  timeout_min: 600
+  cpus_per_task: 4
+  gpus_per_node: 1
+  tasks_per_node: 1
+  mem_gb: 8
+  nodes: 1
