@@ -181,7 +181,7 @@ def step(
         seq, _, pad_mask = batch
         seq = seq.to(device)
         pad_mask = pad_mask.to(device)
-        pred = model(seq, pad_mask, device)
+        pred = model(seq, pad_mask)
         tgt = seq[:, 1:, :]
         tgt_pad_mask = pad_mask[:, 1:]
         mse = F.mse_loss(pred, tgt, reduction="none")

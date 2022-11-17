@@ -34,11 +34,15 @@ def cross_validation(
         get_model = lambda: transformer.get_transformer("base", cfg.hyper.latent_dim)
     elif cfg.hyper.model == "e2e":
         get_model = lambda: e2e.get_e2e(
-            "base_ae", cfg.hyper.seq_len, 16, cfg.hyper.latent_dim
+            "base_ae", cfg.hyper.seq_len, cfg.hyper.num_seq, cfg.hyper.latent_dim
         )
     elif cfg.hyper.model == "e2e-chunked":
         get_model = lambda: e2e_chunked.get_e2e_chunked(
-            "base_ae", cfg.hyper.seq_len, 16, cfg.hyper.latent_dim
+            "base_ae",
+            cfg.hyper.seq_len,
+            cfg.hyper.num_seq,
+            cfg.hyper.latent_dim,
+            cfg.hyper.seq_cat,
         )
     else:
         raise ValueError(f"Model type {cfg.hyper.model} is not defined!")
