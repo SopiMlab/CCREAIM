@@ -229,5 +229,5 @@ def step(
                 "loss_spectral": float(spec_weight * multi_spec.item()),
             }
         )
-        losee = mse + spec_weight * multi_spec
+        loss = mse + spec_weight * multi_spec
     return loss, pred, info
