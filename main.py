@@ -1,5 +1,4 @@
 import logging
-import tarfile
 
 import hydra
 import torch

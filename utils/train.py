@@ -6,7 +6,7 @@ import torch.utils.data
 from omegaconf import OmegaConf
 
 import wandb
-from utils import cfg_classes, util
+from utils import cfg_classes, step, util
 
 log = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ def train(
     for epoch in range(1, cfg.hyper.epochs + 1):
         running_loss = torch.tensor(0.0)
         for batchnum, batch in enumerate(dataloader):
-            loss, _, info = util.step(model, batch, device, cfg)
+            loss, _, info = step.step(model, batch, device, cfg)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()

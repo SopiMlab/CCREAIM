@@ -8,7 +8,7 @@ import torchaudio
 from omegaconf import OmegaConf
 
 import wandb
-from utils import cfg_classes, util
+from utils import cfg_classes, step, util
 
 log = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ def test(
     with torch.no_grad():
         running_loss = torch.tensor(0.0)
         for batchnum, batch in enumerate(dataloader):
-            loss, pred, _ = util.step(model, batch, device, cfg)
+            loss, pred, _ = step.step(model, batch, device, cfg)
 
             if cfg.logging.save_pred:
                 save_root = Path(cfg.logging.pred_output)
