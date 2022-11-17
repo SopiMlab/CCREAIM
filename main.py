@@ -8,9 +8,9 @@ from hydra.core.utils import JobReturn, JobStatus
 from hydra.experimental.callback import Callback
 from omegaconf import OmegaConf
 
-from utils import cfg_classes, dataset, util
-from utils.cross_validation import cross_validation
-from utils.test import test
+from ccreaim.process.cross_validation import cross_validation
+from ccreaim.process.test import test
+from ccreaim.utils import cfg_classes, dataset, util
 
 log = logging.getLogger(__name__)
 

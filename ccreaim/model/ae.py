@@ -1,7 +1,7 @@
 from torch import nn
 
-from model.resnet import Resnet1D
-from utils import util
+from ..utils import util
+from .resnet import Resnet1D
 
 """
 Semi-hardcoded AutoEncoder implementation

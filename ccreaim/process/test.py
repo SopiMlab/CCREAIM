@@ -8,7 +8,9 @@ import torchaudio
 from omegaconf import OmegaConf
 
 import wandb
-from utils import cfg_classes, step, util
+
+from ..utils import cfg_classes, util
+from . import step
 
 log = logging.getLogger(__name__)
 

@@ -1,10 +1,10 @@
-from typing import List, Union
+from typing import Union
 
 import torch
 from torch.nn import functional as F
 
-from model import ae, e2e_chunked, transformer, vae, vqvae
-from utils import cfg_classes, util
+from ..model import ae, e2e_chunked, transformer, vae, vqvae
+from ..utils import cfg_classes, util
 
 
 def step(

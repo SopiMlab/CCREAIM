@@ -1,5 +1,4 @@
 import logging
-import math
 import shutil
 import tarfile
 from pathlib import Path
@@ -11,7 +10,7 @@ from hydra.core.hydra_config import HydraConfig
 from torch.nn import functional as F
 from torch.utils import data
 
-from utils import cfg_classes, util
+from ..utils import cfg_classes, util
 
 log = logging.getLogger(__name__)
 

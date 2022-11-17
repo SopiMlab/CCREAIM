@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-from model import ae, transformer, vae, vqvae
+from . import ae, transformer, vae, vqvae
 
 
 class E2E(nn.Module):

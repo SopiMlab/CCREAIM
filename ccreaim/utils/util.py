@@ -10,7 +10,7 @@ import numpy as np
 import torch
 import torchaudio
 
-from utils import cfg_classes
+from . import cfg_classes
 
 log = logging.getLogger(__name__)
 

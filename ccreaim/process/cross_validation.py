@@ -4,9 +4,9 @@ import torch
 import torch.utils.data
 from sklearn.model_selection import KFold
 
-import wandb
-from model import ae, e2e, e2e_chunked, transformer, vae, vqvae
-from utils import cfg_classes, test, train, util
+from ..model import ae, e2e, e2e_chunked, transformer, vae, vqvae
+from ..utils import cfg_classes
+from . import test, train
 
 log = logging.getLogger(__name__)
 

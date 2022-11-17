@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from model import ae
+from . import ae
 
 
 class VAE(nn.Module):
