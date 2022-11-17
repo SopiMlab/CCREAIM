@@ -218,6 +218,7 @@ def step(
         loss = mse + kld_weight * kld + spec_weight * multi_spec
     else:
         seq, _ = batch
+        seq = seq.to(device)
         pred = model(seq)
         mse = F.mse_loss(pred, seq)
         spec_weight = cfg.hyper.spectral_loss.weight
@@ -229,5 +230,5 @@ def step(
                 "loss_spectral": float(spec_weight * multi_spec.item()),
             }
         )
-        losee = mse + spec_weight * multi_spec
+        loss = mse + spec_weight * multi_spec
     return loss, pred, info
