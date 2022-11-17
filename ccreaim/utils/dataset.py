@@ -10,14 +10,15 @@ from hydra.core.hydra_config import HydraConfig
 from torch.nn import functional as F
 from torch.utils import data
 
-from ..utils import cfg_classes, util
+from ..utils import util
+from ..utils.cfg_classes import LoggingConfig
 
 log = logging.getLogger(__name__)
 
 
-def prepare_dataset_on_tmp(data_tar: str, cfg: cfg_classes.BaseConfig) -> Path:
+def prepare_dataset_on_tmp(data_tar: str, logging_cfg: LoggingConfig) -> Path:
     hc = HydraConfig.get()
-    tmp = Path(f"/tmp/{cfg.logging.run_id}-{hc.job.id}")
+    tmp = Path(f"/tmp/{logging_cfg.run_id}-{hc.job.id}")
     tmp.mkdir(exist_ok=False)
     log.info(f"Copying data tar to: {tmp}")
     tmp_data_tar_path = shutil.copy2(data_tar, tmp)

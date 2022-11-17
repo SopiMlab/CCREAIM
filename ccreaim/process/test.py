@@ -9,8 +9,9 @@ from omegaconf import OmegaConf
 
 import wandb
 
-from ..utils import cfg_classes, util
-from . import step
+from ..model import operate
+from ..utils import util
+from ..utils.cfg_classes import BaseConfig
 
 log = logging.getLogger(__name__)
 
@@ -19,7 +20,7 @@ def test(
     model: torch.nn.Module,
     dataloader: torch.utils.data.DataLoader,
     device: torch.device,
-    cfg: cfg_classes.BaseConfig,
+    cfg: BaseConfig,
     fold: int = 0,
 ):
 
@@ -42,7 +43,7 @@ def test(
     with torch.no_grad():
         running_loss = torch.tensor(0.0)
         for batchnum, batch in enumerate(dataloader):
-            loss, pred, _ = step.step(model, batch, device, cfg)
+            loss, pred, _ = operate.step(model, batch, device, cfg.hyper)
 
             if cfg.logging.save_pred:
                 save_root = Path(cfg.logging.pred_output)
@@ -50,17 +51,21 @@ def test(
                 if cfg.logging.save_one_per_batch:
                     p, n = random.choice(list(zip(pred, batch[1])))
                     save_path = save_root / Path(n).name
-                    util.save_model_prediction(cfg.hyper.model, p, save_path)
+                    util.save_model_prediction(
+                        cfg.hyper.model, p.clone().cpu(), save_path
+                    )
                 else:
                     for p, n in zip(pred, batch[1]):
                         save_path = save_root / Path(n).name
-                        util.save_model_prediction(cfg.hyper.model, p, save_path)
+                        util.save_model_prediction(
+                            cfg.hyper.model, p.clone().cpu(), save_path
+                        )
 
             if cfg.logging.save_encoder_output:
                 feat = model.encode(seq)  # type: ignore
                 for f, n in zip(feat, batch[1]):
                     save_path = Path(cfg.logging.encoder_output) / Path(n).stem
-                    torch.save(f.clone(), str(save_path) + ".pt")
+                    torch.save(f.clone().cpu(), str(save_path) + ".pt")
 
             running_loss += loss.detach().cpu().item()
 

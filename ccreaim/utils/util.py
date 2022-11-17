@@ -10,7 +10,7 @@ import numpy as np
 import torch
 import torchaudio
 
-from . import cfg_classes
+from .cfg_classes import BaseConfig, SpectralLossConfig
 
 log = logging.getLogger(__name__)
 
@@ -105,7 +105,7 @@ def conf_same_padding_calc_t(
 
 # Returns the path to the directory where a model is exported to/imported from according
 # to configuration in cfg, as well as the base name of the model.
-def get_model_path(cfg: cfg_classes.BaseConfig):
+def get_model_path(cfg: BaseConfig):
     exp_path = Path(cfg.logging.model_checkpoints)
     model_name = f"{cfg.hyper.model}_seqlen-{cfg.hyper.seq_len}_bs-{cfg.hyper.batch_size}_lr-{cfg.hyper.learning_rate}_seed-{cfg.hyper.seed}"
     return exp_path, model_name
@@ -138,7 +138,7 @@ def spec(seq: torch.Tensor, stft_val: STFTValues):
 
 
 def multispectral_loss(
-    seq: torch.Tensor, pred: torch.Tensor, cfg: cfg_classes.BaseConfig
+    seq: torch.Tensor, pred: torch.Tensor, spectral_loss_cfg: SpectralLossConfig
 ) -> torch.Tensor:
     losses = torch.zeros(*seq.size()[:-1], device=seq.device)
     if losses.ndim == 1:
@@ -146,9 +146,9 @@ def multispectral_loss(
         seq = seq.unsqueeze(1)
         pred = pred.unsqueeze(1)
     args = (
-        cfg.hyper.spectral_loss.stft_bins,
-        cfg.hyper.spectral_loss.stft_hop_length,
-        cfg.hyper.spectral_loss.stft_window_size,
+        spectral_loss_cfg.stft_bins,
+        spectral_loss_cfg.stft_hop_length,
+        spectral_loss_cfg.stft_window_size,
     )
     for n_bins, hop_length, window_size in zip(*args):
         stft_val = STFTValues(n_bins, hop_length, window_size)

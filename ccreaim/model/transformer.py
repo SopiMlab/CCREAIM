@@ -5,8 +5,6 @@ from typing import Optional
 import torch
 from torch import nn
 
-log = logging.getLogger(__name__)
-
 
 class PositionalEncoding(nn.Module):
     def __init__(self, dim_model: int, dropout_p: float = 0.1, max_len: int = 1000):

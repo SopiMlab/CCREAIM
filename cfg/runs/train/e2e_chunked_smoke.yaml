@@ -18,7 +18,7 @@ hyper:
   num_seq: 16
   seq_cat: true
   seq_len: 4096
-  epochs: 100
+  epochs: 2
   batch_size: 8
   learning_rate: 1e-6
   spectral_loss:
@@ -41,7 +41,7 @@ resources:
   num_workers: 4
 
   # General resource configs
-  timeout_min: 60
+  timeout_min: 10
   cpus_per_task: 4
   gpus_per_node: 1
   tasks_per_node: 1
