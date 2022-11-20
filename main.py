@@ -1,5 +1,4 @@
 import logging
-import tarfile
 
 import hydra
 import torch
@@ -9,9 +8,10 @@ from hydra.core.utils import JobReturn, JobStatus
 from hydra.experimental.callback import Callback
 from omegaconf import OmegaConf
 
-from utils import cfg_classes, dataset, util
-from utils.cross_validation import cross_validation
-from utils.test import test
+from ccreaim.model import operate
+from ccreaim.process.cross_validation import cross_validation
+from ccreaim.process.test import test
+from ccreaim.utils import cfg_classes, dataset, util
 
 log = logging.getLogger(__name__)
 
@@ -50,7 +50,9 @@ def main(cfg: cfg_classes.BaseConfig):
     # Use gpu if available, move the model to device
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
-    tmp_data_root = dataset.prepare_dataset_on_tmp(data_tar=cfg.data.data_tar, cfg=cfg)
+    tmp_data_root = dataset.prepare_dataset_on_tmp(
+        data_tar=cfg.data.data_tar, logging_cfg=cfg.logging
+    )
 
     # Get the dataset, use audio data for any non-transformer model,
     # feature data for transformers
@@ -74,7 +76,10 @@ def main(cfg: cfg_classes.BaseConfig):
         # Fetch the model:
         # testing load an existing trained one
         checkpoint = torch.load(cfg.logging.load_model_path, map_location="cpu")
-        model = checkpoint["model"]
+        model_state_dict = checkpoint["model_state_dict"]
+        get_model = operate.get_model_init_function(cfg.hyper)
+        model = get_model()
+        model.load_state_dict(model_state_dict)
         model = model.to(device)
 
         # Make a dataloader

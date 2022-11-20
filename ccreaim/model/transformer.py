@@ -5,9 +5,7 @@ from typing import Optional
 import torch
 from torch import nn
 
-from utils import cfg_classes
-
-log = logging.getLogger(__name__)
+from ..utils.cfg_classes import HyperConfig
 
 
 class PositionalEncoding(nn.Module):
@@ -119,10 +117,10 @@ class Transformer(nn.Module):
         return mask
 
 
-def get_transformer(name: str, cfg: cfg_classes.BaseConfig) -> Transformer:
+def get_transformer(name: str, hyper_cfg: HyperConfig) -> Transformer:
     if name == "base":
         return Transformer(
-            dim_model=cfg.hyper.latent_dim,
+            dim_model=hyper_cfg.latent_dim,
             num_heads=8,
             num_encoder_layers=1,
             num_decoder_layers=1,

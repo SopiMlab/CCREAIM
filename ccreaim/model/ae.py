@@ -1,7 +1,8 @@
 from torch import nn
 
-from model.resnet import Resnet1D
-from utils import cfg_classes, util
+from ..utils import util
+from ..utils.cfg_classes import HyperConfig, ResAeConfig
+from .resnet import Resnet1D
 
 """
 Semi-hardcoded AutoEncoder implementation
@@ -487,9 +488,9 @@ class ResDecoder(nn.Module):
 
 # Returns latent dimension, resnet block configurations and the whole ResAeConfig object
 def _res_ae_configs(
-    cfg: cfg_classes.BaseConfig,
-) -> tuple[int, dict[int], cfg_classes.ResAeConfig]:
-    res_ae_config = cfg.hyper.res_ae
+    hyper_cfg: HyperConfig,
+) -> tuple[int, dict[int], ResAeConfig]:
+    res_ae_config = hyper_cfg.res_ae
     assert (
         len(res_ae_config.downs_t)
         == len(res_ae_config.strides_t)
@@ -501,11 +502,11 @@ def _res_ae_configs(
         m_conv=res_ae_config.block_m_conv,
         dilation_cycle=res_ae_config.block_dilation_cycle,
     )
-    return cfg.hyper.latent_dim, block_kwargs, res_ae_config
+    return hyper_cfg.latent_dim, block_kwargs, res_ae_config
 
 
-def get_res_encoder(cfg: cfg_classes.BaseConfig) -> ResEncoder:
-    latent_dim, block_kwargs, res_ae_cfg = _res_ae_configs(cfg)
+def get_res_encoder(hyper_cfg: HyperConfig) -> ResEncoder:
+    latent_dim, block_kwargs, res_ae_cfg = _res_ae_configs(hyper_cfg)
     return ResEncoder(
         res_ae_cfg.input_emb_width,
         latent_dim,
@@ -516,8 +517,8 @@ def get_res_encoder(cfg: cfg_classes.BaseConfig) -> ResEncoder:
     )
 
 
-def get_res_decoder(cfg: cfg_classes.BaseConfig) -> ResDecoder:
-    latent_dim, block_kwargs, res_ae_cfg = _res_ae_configs(cfg)
+def get_res_decoder(hyper_cfg: HyperConfig) -> ResDecoder:
+    latent_dim, block_kwargs, res_ae_cfg = _res_ae_configs(hyper_cfg)
     return ResDecoder(
         res_ae_cfg.input_emb_width,
         latent_dim,
@@ -528,9 +529,9 @@ def get_res_decoder(cfg: cfg_classes.BaseConfig) -> ResDecoder:
     )
 
 
-def _create_res_autoencoder(cfg: cfg_classes.BaseConfig):
-    encoder = get_res_encoder(cfg)
-    decoder = get_res_decoder(cfg)
+def _create_res_autoencoder(hyper_cfg: HyperConfig):
+    encoder = get_res_encoder(hyper_cfg)
+    decoder = get_res_decoder(hyper_cfg)
     return AutoEncoder(encoder, decoder)
 
 
@@ -540,10 +541,10 @@ def _create_autoencoder(seq_length: int, latent_dim: int):
     return AutoEncoder(encoder, decoder)
 
 
-def get_autoencoder(name: str, cfg: cfg_classes.BaseConfig):
+def get_autoencoder(name: str, hyper_cfg: HyperConfig):
     if name == "base":
-        return _create_autoencoder(cfg.hyper.seq_len, cfg.hyper.latent_dim)
+        return _create_autoencoder(hyper_cfg.seq_len, hyper_cfg.latent_dim)
     elif name == "res-ae":
-        return _create_res_autoencoder(cfg)
+        return _create_res_autoencoder(hyper_cfg)
     else:
         raise ValueError("Unknown autoencoder name: '{}'".format(name))

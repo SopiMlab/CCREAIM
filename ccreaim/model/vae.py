@@ -2,8 +2,8 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from model import ae
-from utils import cfg_classes
+from ..utils.cfg_classes import HyperConfig
+from . import ae
 
 
 class VAE(nn.Module):
@@ -78,21 +78,21 @@ def _create_vae(seq_length: int, latent_dim: int):
     return VAE(encoder, decoder, reparam)
 
 
-def _create_res_vae(cfg: cfg_classes.BaseConfig):
-    encoder = ae.get_res_encoder(cfg)
-    decoder = ae.get_res_decoder(cfg)
-    assert cfg.hyper.res_ae.levels == 1, "Res-VAE with multiple levels not supported"
-    encoder_out_seq_len = cfg.hyper.seq_len // (
-        cfg.hyper.res_ae.strides_t[0] ** cfg.hyper.res_ae.downs_t[0]
+def _create_res_vae(hyper_cfg: HyperConfig):
+    encoder = ae.get_res_encoder(hyper_cfg)
+    decoder = ae.get_res_decoder(hyper_cfg)
+    assert hyper_cfg.res_ae.levels == 1, "Res-VAE with multiple levels not supported"
+    encoder_out_seq_len = hyper_cfg.seq_len // (
+        hyper_cfg.res_ae.strides_t[0] ** hyper_cfg.res_ae.downs_t[0]
     )
-    reparam = Reparametrization(encoder_out_seq_len, cfg.hyper.latent_dim)
+    reparam = Reparametrization(encoder_out_seq_len, hyper_cfg.latent_dim)
     return ResVAE(encoder, decoder, reparam)
 
 
-def get_vae(name: str, cfg: cfg_classes.BaseConfig):
+def get_vae(name: str, hyper_cfg: HyperConfig):
     if name == "base":
-        return _create_vae(cfg.hyper.seq_len, cfg.hyper.latent_dim)
+        return _create_vae(hyper_cfg.seq_len, hyper_cfg.latent_dim)
     elif name == "res-vae":
-        return _create_res_vae(cfg)
+        return _create_res_vae(hyper_cfg)
     else:
         raise ValueError("Unknown autoencoder name: '{}'".format(name))

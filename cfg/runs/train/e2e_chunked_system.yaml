@@ -6,7 +6,7 @@ process:
 logging:
   exp_name: system
   checkpoint: 10
-
+  save_pred: true
 
 data:
   data_tar: /scratch/other/sopi/CCREAIM/datasets/chopped_65536.tar
@@ -15,8 +15,10 @@ hyper:
   model: e2e-chunked
   seed: 0
   latent_dim: 32
+  num_seq: 16
+  seq_cat: true
   seq_len: 4096
-  epochs: 100
+  epochs: 50
   batch_size: 64
   learning_rate: 1e-6
   spectral_loss:
@@ -39,7 +41,7 @@ resources:
   num_workers: 4
 
   # General resource configs
-  timeout_min: 600
+  timeout_min: 720
   cpus_per_task: 4
   gpus_per_node: 1
   tasks_per_node: 1
