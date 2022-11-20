@@ -15,6 +15,22 @@ hyper:
   epochs: 10
   batch_size: 32
   learning_rate: 1e-4
+  kld_loss:
+    weight: 1e-3
+  spectral_loss:
+    weight: 1e-5
+    stft_bins:
+      - 2048
+      - 1024
+      - 512
+    stft_hop_length:
+      - 240
+      - 120
+      - 50
+    stft_window_size:
+      - 1200
+      - 600
+      - 240
 
 logging:
   exp_name: system-test

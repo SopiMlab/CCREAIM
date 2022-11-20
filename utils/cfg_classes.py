@@ -76,6 +76,19 @@ class SpectralLossConfig:
 
 
 @dataclass
+class ResAeConfig:
+    levels: int
+    downs_t: list[int]
+    strides_t: list[int]
+    input_emb_width: int
+    block_width: int
+    block_depth: int
+    block_m_conv: float
+    block_dilation_growth_rate: int
+    block_dilation_cycle: int
+
+
+@dataclass
 class HyperConfig:
     model: str
     seed: int
@@ -90,6 +103,7 @@ class HyperConfig:
     learning_rate: float
     kld_loss: KldLossConfig
     spectral_loss: SpectralLossConfig
+    res_ae: ResAeConfig
 
 
 @dataclass

@@ -10,7 +10,7 @@ data:
   data_tar: /scratch/other/sopi/CCREAIM/datasets/chopped_65536.tar
 
 hyper:
-  model: ae
+  model: vae
   seed: 0
   latent_dim: 16
   seq_len: 65536

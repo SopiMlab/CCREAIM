@@ -17,6 +17,8 @@ hyper:
   epochs: 2
   batch_size: 8
   learning_rate: 1e-4
+  kld_loss:
+    weight: 1e-3
   spectral_loss:
     weight: 1e-2
     stft_bins:

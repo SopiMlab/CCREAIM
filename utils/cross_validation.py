@@ -17,21 +17,17 @@ def cross_validation(
 
     # Model init function mapping
     if cfg.hyper.model == "ae":
-        get_model = lambda: ae.get_autoencoder(
-            "base", cfg.hyper.seq_len, cfg.hyper.latent_dim
-        )
+        get_model = lambda: ae.get_autoencoder("base", cfg)
     elif cfg.hyper.model == "res-ae":
-        get_model = lambda: ae.get_autoencoder(
-            "res-ae", cfg.hyper.seq_len, cfg.hyper.latent_dim
-        )
+        get_model = lambda: ae.get_autoencoder("res-ae", cfg)
     elif cfg.hyper.model == "vae":
-        get_model = lambda: vae.get_vae("base", cfg.hyper.seq_len, cfg.hyper.latent_dim)
+        get_model = lambda: vae.get_vae("base", cfg)
+    elif cfg.hyper.model == "res-vae":
+        get_model = lambda: vae.get_vae("res-vae", cfg)
     elif cfg.hyper.model == "vq-vae":
-        get_model = lambda: vqvae.get_vqvae(
-            "base", cfg.hyper.seq_len, cfg.hyper.latent_dim
-        )
+        get_model = lambda: vqvae.get_vqvae("base", cfg)
     elif cfg.hyper.model == "transformer":
-        get_model = lambda: transformer.get_transformer("base", cfg.hyper.latent_dim)
+        get_model = lambda: transformer.get_transformer("base", cfg)
     elif cfg.hyper.model == "e2e":
         get_model = lambda: e2e.get_e2e(
             "base_ae", cfg.hyper.seq_len, cfg.hyper.num_seq, cfg.hyper.latent_dim

@@ -5,6 +5,8 @@ from typing import Optional
 import torch
 from torch import nn
 
+from utils import cfg_classes
+
 log = logging.getLogger(__name__)
 
 
@@ -117,10 +119,10 @@ class Transformer(nn.Module):
         return mask
 
 
-def get_transformer(name: str, latent_dim: int) -> Transformer:
+def get_transformer(name: str, cfg: cfg_classes.BaseConfig) -> Transformer:
     if name == "base":
         return Transformer(
-            dim_model=latent_dim,
+            dim_model=cfg.hyper.latent_dim,
             num_heads=8,
             num_encoder_layers=1,
             num_decoder_layers=1,

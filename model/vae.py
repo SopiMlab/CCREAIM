@@ -3,6 +3,7 @@ from torch import nn
 from torch.nn import functional as F
 
 from model import ae
+from utils import cfg_classes
 
 
 class VAE(nn.Module):
@@ -11,18 +12,38 @@ class VAE(nn.Module):
         encoder: nn.Module,
         decoder: nn.Module,
         reparam: nn.Module,
-        kld_weight: float = 0.05,
     ):
         super().__init__()
         self.encoder = encoder
         self.reparam = reparam
         self.decoder = decoder
-        self.kld_weight = kld_weight
 
     def forward(self, data: torch.Tensor):
         e = self.encoder(data)
         z, mu, sigma = self.reparam(e)
         d = self.decoder(z)
+        return d, mu, sigma
+
+
+# TODO something prettier and less copypasty to deal with encoder returning a
+# list (because of the possibility of multiple levels)
+class ResVAE(nn.Module):
+    def __init__(
+        self,
+        encoder: nn.Module,
+        decoder: nn.Module,
+        reparam: nn.Module,
+    ):
+        super().__init__()
+        self.encoder = encoder
+        self.reparam = reparam
+        self.decoder = decoder
+
+    def forward(self, data: torch.Tensor):
+        e = self.encoder(data)
+        [e] = e
+        z, mu, sigma = self.reparam(e)
+        d = self.decoder([z])
         return d, mu, sigma
 
 
@@ -39,10 +60,15 @@ class Reparametrization(nn.Module):
         flat_data = data.flatten(start_dim=1)
         mu = self.fc_mu(flat_data)
         log_sigma = self.fc_sig(flat_data)
-        sigma = torch.exp(log_sigma)
-        sample = torch.normal(mu, sigma)
-        z = self.fc_z(sample).view(-1, self.latent_dim, self.in_out_len)
-        return z, mu, sigma
+        std = torch.exp(0.5 * log_sigma)
+        # sample = torch.normal(mu, std)
+        eps = torch.randn_like(std)
+        sample = mu + eps * std
+        fc_z_out = self.fc_z(sample)
+        z = fc_z_out.view(-1, self.latent_dim, self.in_out_len)
+        # z = self.fc_z(sample).view(-1, self.latent_dim, self.in_out_len)
+        # raise Exception(f"Data shape: {data.shape}\nLatent_dim: {self.latent_dim}\nFlat data shape: {flat_data.shape}\nIn out len: {self.in_out_len}\nSample shape: {sample.shape}\nfc_z_out_shape: {fc_z_out.shape}\nz shape: {z.shape}\n{self}")
+        return z, mu, std
 
 
 def _create_vae(seq_length: int, latent_dim: int):
@@ -52,8 +78,21 @@ def _create_vae(seq_length: int, latent_dim: int):
     return VAE(encoder, decoder, reparam)
 
 
-def get_vae(name: str, seq_length: int, latent_dim: int):
+def _create_res_vae(cfg: cfg_classes.BaseConfig):
+    encoder = ae.get_res_encoder(cfg)
+    decoder = ae.get_res_decoder(cfg)
+    assert cfg.hyper.res_ae.levels == 1, "Res-VAE with multiple levels not supported"
+    encoder_out_seq_len = cfg.hyper.seq_len // (
+        cfg.hyper.res_ae.strides_t[0] ** cfg.hyper.res_ae.downs_t[0]
+    )
+    reparam = Reparametrization(encoder_out_seq_len, cfg.hyper.latent_dim)
+    return ResVAE(encoder, decoder, reparam)
+
+
+def get_vae(name: str, cfg: cfg_classes.BaseConfig):
     if name == "base":
-        return _create_vae(seq_length, latent_dim)
+        return _create_vae(cfg.hyper.seq_len, cfg.hyper.latent_dim)
+    elif name == "res-vae":
+        return _create_res_vae(cfg)
     else:
         raise ValueError("Unknown autoencoder name: '{}'".format(name))

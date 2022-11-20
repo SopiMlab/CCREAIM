@@ -198,7 +198,7 @@ def step(
             }
         )
         loss = mse + spec_weight * multi_spec
-    elif isinstance(model, vae.VAE):
+    elif isinstance(model, vae.VAE) or isinstance(model, vae.ResVAE):
         seq, _ = batch
         seq = seq.to(device)
         pred, mu, sigma = model(seq)

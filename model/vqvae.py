@@ -2,6 +2,7 @@ import torch
 from torch import nn
 
 from model import ae
+from utils import cfg_classes
 
 
 class VQVAE(nn.Module):
@@ -41,8 +42,8 @@ def _create_vqvae(seq_length: int, latent_dim: int):
     return VQVAE(encoder, decoder, reparam)
 
 
-def get_vqvae(name: str, seq_length: int, latent_dim: int):
+def get_vqvae(name: str, cfg: cfg_classes.BaseConfig):
     if name == "base":
-        return _create_vqvae(seq_length, latent_dim)
+        return _create_vqvae(cfg.hyper.seq_len, cfg.hyper.latent_dim)
     else:
         raise ValueError("Unknown autoencoder name: '{}'".format(name))
