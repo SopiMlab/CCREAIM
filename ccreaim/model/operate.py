@@ -100,13 +100,9 @@ def get_model_init_function(hyper_cfg: HyperConfig):
             "base_ae", hyper_cfg.seq_len, hyper_cfg.num_seq, hyper_cfg.latent_dim
         )
     elif hyper_cfg.model == "e2e-chunked":
-        get_model = lambda: e2e_chunked.get_e2e_chunked(
-            "base_ae",
-            hyper_cfg.seq_len,
-            hyper_cfg.num_seq,
-            hyper_cfg.latent_dim,
-            hyper_cfg.seq_cat,
-        )
+        get_model = lambda: e2e_chunked.get_e2e_chunked("base_ae", hyper_cfg)
+    elif hyper_cfg.model == "e2e-chunked_res-ae":
+        get_model = lambda: e2e_chunked.get_e2e_chunked("base_res-ae", hyper_cfg)
     else:
         raise ValueError(f"Model type {hyper_cfg.model} is not defined!")
     return get_model

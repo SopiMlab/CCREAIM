@@ -3,6 +3,7 @@ import logging
 import torch
 from torch import nn
 
+from ..utils.cfg_classes import HyperConfig
 from . import ae, transformer, vae, vqvae
 
 log = logging.getLogger(__name__)
@@ -84,10 +85,42 @@ def _create_e2e_chunked_ae(
     )
 
 
-def get_e2e_chunked(
-    name: str, seq_length: int, num_seq: int, latent_dim: int, seq_cat: bool
-):
+def _create_e2e_chunked_res_ae(hyper_cfg: HyperConfig):
+    seq_len = hyper_cfg.seq_len
+    latent_dim = hyper_cfg.latent_dim
+    encoder = ae.get_res_encoder(hyper_cfg)
+    decoder = ae.get_res_decoder(hyper_cfg)
+    encoder_output_length = ae.res_encoder_output_seq_length(hyper_cfg)
+    trf = transformer.Transformer(
+        dim_model=latent_dim
+        if hyper_cfg.seq_cat
+        else latent_dim * encoder_output_length,
+        num_heads=latent_dim // 4,
+        num_encoder_layers=1,
+        num_decoder_layers=1,
+        dropout_p=0.1,
+    )
+    return E2EChunked(
+        encoder,
+        trf,
+        decoder,
+        seq_len,
+        latent_dim,
+        hyper_cfg.num_seq,
+        encoder_output_length,
+        hyper_cfg.seq_cat,
+    )
+
+
+def get_e2e_chunked(name: str, hyper_cfg: HyperConfig):
     if name == "base_ae":
-        return _create_e2e_chunked_ae(seq_length, num_seq, latent_dim, seq_cat)
+        return _create_e2e_chunked_ae(
+            hyper_cfg.seq_len,
+            hyper_cfg.num_seq,
+            hyper_cfg.latent_dim,
+            hyper_cfg.seq_cat,
+        )
+    elif name == "base_res-ae":
+        return _create_e2e_chunked_res_ae(hyper_cfg)
     else:
         raise ValueError("Unknown autoencoder name: '{}'".format(name))
