@@ -64,7 +64,7 @@ def chop_dataset(in_root: str, out_tar_file_path: str, ext: str, sample_length: 
 def save_model_prediction(model_name: str, pred: torch.Tensor, save_path: Path) -> None:
     if model_name == "transformer":
         torch.save(pred, save_path)
-    elif model_name == "e2e-chunked":
+    elif "e2e-chunked" in model_name:
         torchaudio.save(  # type: ignore
             save_path,
             pred.flatten().unsqueeze(0),
