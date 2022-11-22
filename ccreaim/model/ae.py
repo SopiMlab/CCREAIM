@@ -380,10 +380,8 @@ class DecoderConvBlock(nn.Module):
         return self.model(x)
 
 
-# For both Encoder and Decoder:
-# input_emb_width = seq_len
-# output_emb_width = latent_dim
-class ResEncoder(nn.Module):
+# Multilevel AE:s from jukebox implementation
+class MultiLevelResEncoder(nn.Module):
     def __init__(
         self,
         input_emb_width,
@@ -431,7 +429,7 @@ class ResEncoder(nn.Module):
         return xs
 
 
-class ResDecoder(nn.Module):
+class MultiLevelResDecoder(nn.Module):
     def __init__(
         self,
         input_emb_width,
@@ -486,6 +484,60 @@ class ResDecoder(nn.Module):
         return x
 
 
+# Single level AE-components for simplicity/avoiding encoder list output
+class ResEncoder(nn.Module):
+    def __init__(
+        self,
+        input_emb_width,
+        output_emb_width,
+        down_t,
+        stride_t,
+        **block_kwargs,
+    ):
+        super().__init__()
+        self.input_emb_width = input_emb_width
+        self.output_emb_width = output_emb_width
+        self.down_t = down_t
+        self.stride_t = stride_t
+        block_kwargs_copy = dict(**block_kwargs)
+        self.encoder_block = EncoderConvBlock(
+            input_emb_width,
+            output_emb_width,
+            down_t,
+            stride_t,
+            **block_kwargs_copy,
+        )
+
+    def forward(self, x):
+        x = self.encoder_block(x)
+        return x
+
+
+class ResDecoder(nn.Module):
+    def __init__(
+        self,
+        input_emb_width,
+        output_emb_width,
+        down_t,
+        stride_t,
+        **block_kwargs,
+    ):
+        super().__init__()
+        self.input_emb_width = input_emb_width
+        self.output_emb_width = output_emb_width
+        self.down_t = down_t
+        self.stride_t = stride_t
+        self.decoder_block = DecoderConvBlock(
+            output_emb_width, output_emb_width, down_t, stride_t, **block_kwargs
+        )
+        self.out = nn.Conv1d(output_emb_width, input_emb_width, 3, 1, 1)
+
+    def forward(self, x):
+        x = self.decoder_block(x)
+        x = self.out(x)
+        return x
+
+
 # Returns latent dimension, resnet block configurations and the whole ResAeConfig object
 def _res_ae_configs(
     hyper_cfg: HyperConfig,
@@ -505,26 +557,39 @@ def _res_ae_configs(
     return hyper_cfg.latent_dim, block_kwargs, res_ae_config
 
 
+# For single-level res-encoders
+def res_encoder_output_seq_length(hyper_cfg: HyperConfig) -> int:
+    res_ae_cfg = hyper_cfg.res_ae
+    assert (
+        res_ae_cfg.levels == 1
+    ), f"Method only supported for single-level but number of levels was {res_ae_cfg.levels}"
+    return hyper_cfg.seq_len // (res_ae_cfg.strides_t[0] ** res_ae_cfg.downs_t[0])
+
+
 def get_res_encoder(hyper_cfg: HyperConfig) -> ResEncoder:
     latent_dim, block_kwargs, res_ae_cfg = _res_ae_configs(hyper_cfg)
+    assert (
+        res_ae_cfg.levels == 1
+    ), f"Method only supported for single-level but number of levels was {res_ae_cfg.levels}"
     return ResEncoder(
         res_ae_cfg.input_emb_width,
         latent_dim,
-        res_ae_cfg.levels,
-        res_ae_cfg.downs_t,
-        res_ae_cfg.strides_t,
+        res_ae_cfg.downs_t[0],
+        res_ae_cfg.strides_t[0],
         **block_kwargs,
     )
 
 
 def get_res_decoder(hyper_cfg: HyperConfig) -> ResDecoder:
     latent_dim, block_kwargs, res_ae_cfg = _res_ae_configs(hyper_cfg)
+    assert (
+        res_ae_cfg.levels == 1
+    ), f"Method only supported for single-level but number of levels was {res_ae_cfg.levels}"
     return ResDecoder(
         res_ae_cfg.input_emb_width,
         latent_dim,
-        res_ae_cfg.levels,
-        res_ae_cfg.downs_t,
-        res_ae_cfg.strides_t,
+        res_ae_cfg.downs_t[0],
+        res_ae_cfg.strides_t[0],
         **block_kwargs,
     )
 
