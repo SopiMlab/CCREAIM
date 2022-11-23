@@ -38,7 +38,7 @@ def main(cfg: cfg_classes.BaseConfig):
     """The main entry point to the training loop/testing
 
     Args:
-        cfg (DictConfig): The config object provided by Hydra
+        cfg (BaseConfig): The config object provided by Hydra
 
     Raises:
         ValueError: if misconfiguration

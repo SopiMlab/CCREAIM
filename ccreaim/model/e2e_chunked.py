@@ -95,9 +95,9 @@ def _create_e2e_chunked_res_ae(hyper_cfg: HyperConfig):
         dim_model=latent_dim
         if hyper_cfg.seq_cat
         else latent_dim * encoder_output_length,
-        num_heads=latent_dim // 4,
-        num_encoder_layers=1,
-        num_decoder_layers=1,
+        num_heads=latent_dim // hyper_cfg.transformer.num_heads_latent_dimension_div,
+        num_encoder_layers=hyper_cfg.transformer.num_enc_layers,
+        num_decoder_layers=hyper_cfg.transformer.num_dec_layers,
         dropout_p=0.1,
     )
     return E2EChunked(

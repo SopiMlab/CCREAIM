@@ -63,6 +63,32 @@ def step(
             }
         )
         loss = mse + kld_weight * kld + spec_weight * multi_spec
+    elif isinstance(model, vqvae.VQVAE):
+        seq, _ = batch
+        seq = seq.to(device)
+        pred, latents, quantized_latents = model(seq)
+        mse = F.mse_loss(pred, seq)
+        # Compute the VQ Losses
+        commitment_loss = F.mse_loss(quantized_latents.detach(), latents)
+        embedding_loss = F.mse_loss(quantized_latents, latents.detach())
+
+        vq_loss = commitment_loss * hyper_cfg.vqvae.beta + embedding_loss
+
+        # Add the residue back to the latents
+
+        spec_weight = hyper_cfg.spectral_loss.weight
+        multi_spec = util.multispectral_loss(seq, pred, hyper_cfg.spectral_loss)
+        multi_spec = multi_spec.mean()
+        info.update(
+            {
+                "commitment_loss": commitment_loss.item(),
+                "embedding_loss": hyper_cfg.vqvae.beta * embedding_loss.item(),
+                "vq_loss": vq_loss.item(),
+                "loss_mse": float(mse.item()),
+                "loss_spectral": float(spec_weight * multi_spec.item()),
+            }
+        )
+        loss = mse + spec_weight * multi_spec + vq_loss
     else:
         seq, _ = batch
         seq = seq.to(device)

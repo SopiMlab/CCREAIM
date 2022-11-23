@@ -76,6 +76,10 @@ hyper:
   epochs: ???
   batch_size: ???
   learning_rate: ???
+  transformer: null
+    # num_heads_latent_dimension_div: ???
+    # num_enc_layers: ???
+    # num_dec_layers: ???
   kld_loss: null
     # weight: ???
   spectral_loss:  null

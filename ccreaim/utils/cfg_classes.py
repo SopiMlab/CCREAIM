@@ -89,6 +89,19 @@ class ResAeConfig:
 
 
 @dataclass
+class TransformerConfig:
+    num_heads_latent_dimension_div: int
+    num_enc_layers: int
+    num_dec_layers: int
+
+
+@dataclass
+class VQVAEConfig:
+    num_embeddings: int
+    beta: float
+
+
+@dataclass
 class HyperConfig:
     model: str
     seed: int
@@ -104,6 +117,8 @@ class HyperConfig:
     kld_loss: Optional[KldLossConfig] = None
     spectral_loss: Optional[SpectralLossConfig] = None
     res_ae: Optional[ResAeConfig] = None
+    transformer: Optional[TransformerConfig] = None
+    vqvae: Optional[VQVAEConfig] = None
 
 
 @dataclass
