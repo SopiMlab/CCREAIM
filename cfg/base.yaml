@@ -76,10 +76,20 @@ hyper:
   epochs: ???
   batch_size: ???
   learning_rate: ???
-  kld_loss:
-    weight: ???
-  spectral_loss:
-    weight: ???
-    stft_bins: ???
-    stft_hop_length: ???
-    stft_window_size: ???
+  kld_loss: null
+    # weight: ???
+  spectral_loss:  null
+    # weight: ???
+    # stft_bins: ???
+    # stft_hop_length: ???
+    # stft_window_size: ???
+  res_ae: null
+    # levels: ??? # orig 3
+    # downs_t: ??? # orig [3,2,2]
+    # strides_t: ??? # orig [2,2,2]
+    # input_emb_width: ??? # 1
+    # block_width: ??? # 32
+    # block_depth: ??? # 2
+    # block_m_conv: ??? # 1.0
+    # block_dilation_growth_rate: ??? #3
+    # block_dilation_cycle: null

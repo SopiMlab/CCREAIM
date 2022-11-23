@@ -77,6 +77,9 @@ def main(cfg: cfg_classes.BaseConfig):
         # testing load an existing trained one
         checkpoint = torch.load(cfg.logging.load_model_path, map_location="cpu")
         model_state_dict = checkpoint["model_state_dict"]
+        hyper_cfg_schema = OmegaConf.structured(cfg_classes.HyperConfig)
+        conf = OmegaConf.create(checkpoint["hyper_config"])
+        cfg.hyper = OmegaConf.merge(hyper_cfg_schema, conf)
         get_model = operate.get_model_init_function(cfg.hyper)
         model = get_model()
         model.load_state_dict(model_state_dict)

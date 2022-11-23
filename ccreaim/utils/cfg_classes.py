@@ -42,24 +42,24 @@ class Resources:
 
     # General resource configs
     timeout_min: int
-    cpus_per_task: Optional[int]
-    gpus_per_node: Optional[int]
-    tasks_per_node: int
-    mem_gb: Optional[int]
-    nodes: int
+    cpus_per_task: Optional[int] = None
+    gpus_per_node: Optional[int] = None
+    tasks_per_node: int = 1
+    mem_gb: Optional[int] = None
+    nodes: int = 1
 
     # Slurm resource configs
-    partition: Optional[str]
-    qos: Optional[str]
-    comment: Optional[str]
-    constraint: Optional[str]
-    exclude: Optional[str]
-    gres: Optional[str]
-    cpus_per_gpu: Optional[int]
-    gpus_per_task: Optional[int]
-    mem_per_gpu: Optional[int]
-    mem_per_cpu: Optional[int]
-    max_num_timeout: Optional[int]
+    partition: Optional[str] = None
+    qos: Optional[str] = None
+    comment: Optional[str] = None
+    constraint: Optional[str] = None
+    exclude: Optional[str] = None
+    gres: Optional[str] = None
+    cpus_per_gpu: Optional[int] = None
+    gpus_per_task: Optional[int] = None
+    mem_per_gpu: Optional[int] = None
+    mem_per_cpu: Optional[int] = None
+    max_num_timeout: Optional[int] = None
 
 
 @dataclass
@@ -101,9 +101,9 @@ class HyperConfig:
     epochs: int
     batch_size: int
     learning_rate: float
-    kld_loss: KldLossConfig
-    spectral_loss: SpectralLossConfig
-    res_ae: ResAeConfig
+    kld_loss: Optional[KldLossConfig] = None
+    spectral_loss: Optional[SpectralLossConfig] = None
+    res_ae: Optional[ResAeConfig] = None
 
 
 @dataclass

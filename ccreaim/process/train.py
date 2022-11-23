@@ -24,9 +24,7 @@ def train(
 
     if cfg.logging.wandb:
         wandb_group_name = f"{cfg.hyper.model}-{cfg.logging.exp_name}"
-        wandb_exp_name = (
-            f"{cfg.hyper.model}-{cfg.logging.exp_name}-train-seed:{str(cfg.hyper.seed)}"
-        )
+        wandb_exp_name = f"{cfg.hyper.model}-{cfg.logging.exp_name}-train-seed:{str(cfg.hyper.seed)}-id:{cfg.logging.run_id}"
         if fold != 0:
             wandb_exp_name += f"-fold:{fold}"
 
@@ -72,6 +70,7 @@ def train(
                 {
                     "epoch": epoch,
                     "model_state_dict": model.state_dict(),
+                    "hyper_config": OmegaConf.to_container(cfg.hyper),
                     "optimizer_state_dict": optimizer.state_dict(),
                     "loss": running_loss,
                 },
@@ -83,8 +82,8 @@ def train(
     torch.save(
         {
             "epoch": cfg.hyper.epochs,
-            "model": model,
             "model_state_dict": model.state_dict(),
+            "hyper_config": OmegaConf.to_container(cfg.hyper),
             "optimizer_state_dict": optimizer.state_dict(),
             "loss": 0,
         },
