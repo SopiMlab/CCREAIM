@@ -18,7 +18,7 @@ hyper:
   num_seq: 16
   seq_cat: true
   seq_len: 4096
-  epochs: 200
+  epochs: 100
   batch_size: 8
   transformer:
     num_heads_latent_dimension_div: 4
@@ -49,5 +49,5 @@ resources:
   cpus_per_task: 2
   gpus_per_node: 0
   tasks_per_node: 1
-  mem_gb: 1
+  mem_gb: 2
   nodes: 1

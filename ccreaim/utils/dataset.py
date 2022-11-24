@@ -35,11 +35,9 @@ class AudioDataset(data.Dataset):
         self.ext = ext
         self.sample_path_list = util.get_sample_path_list(self.data_root, self.ext)
 
-    def __getitem__(self, index: int) -> Union[torch.Tensor, tuple[torch.Tensor, str]]:
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, str]:
         file_name = str(self.sample_path_list[index])
-        waveform, _ = torchaudio.load(  # type: ignore
-            str(self.sample_path_list[index]), format=self.ext
-        )
+        waveform, _ = torchaudio.load(file_name, format=self.ext)  # type: ignore
         waveform = waveform.squeeze()
         padded_waveform = F.pad(waveform, (0, self.seq_len - waveform.size(0)), value=0)
         return padded_waveform.unsqueeze(0), file_name
@@ -56,13 +54,9 @@ class ChunkedAudioDataset(data.Dataset):
         self.seq_num = seq_num
         self.sample_path_list = util.get_sample_path_list(self.data_root, self.ext)
 
-    def __getitem__(
-        self, index: int
-    ) -> Union[torch.Tensor, tuple[torch.Tensor, str, torch.Tensor]]:
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, str, torch.Tensor]:
         file_name = str(self.sample_path_list[index])
-        waveform, _ = torchaudio.load(  # type: ignore
-            str(self.sample_path_list[index]), format=self.ext
-        )
+        waveform, _ = torchaudio.load(file_name, format=self.ext)  # type: ignore
         waveform = waveform.squeeze()
         seq_list = util.chop_sample(waveform, self.seq_len)
         seq_list[-1] = F.pad(
@@ -72,7 +66,6 @@ class ChunkedAudioDataset(data.Dataset):
         padded_seq = F.pad(seq, (0, 0, 0, self.seq_num - seq.size(0)), value=0)
         pad_mask = torch.full((self.seq_num,), False)
         pad_mask[seq.size(0) + 1 :] = True
-        padded_seq[pad_mask] = 0
         return padded_seq, file_name, pad_mask
 
     def __len__(self):
@@ -85,7 +78,7 @@ class FeatureDataset(data.Dataset):
         self.ext = ext
         self.sample_path_list = util.get_sample_path_list(self.data_root, self.ext)
 
-    def __getitem__(self, index: int) -> Union[torch.Tensor, tuple[torch.Tensor, str]]:
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, str]:
         file_name = str(self.sample_path_list[index])
         feature = torch.load(file_name, map_location="cpu")
         return feature.squeeze().T, file_name

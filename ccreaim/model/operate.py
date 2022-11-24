@@ -122,9 +122,7 @@ def get_model_init_function(hyper_cfg: HyperConfig):
     elif hyper_cfg.model == "transformer":
         get_model = lambda: transformer.get_transformer("base", hyper_cfg)
     elif hyper_cfg.model == "e2e":
-        get_model = lambda: e2e.get_e2e(
-            "base_ae", hyper_cfg.seq_len, hyper_cfg.num_seq, hyper_cfg.latent_dim
-        )
+        get_model = lambda: e2e.get_e2e("base_ae", hyper_cfg)
     elif hyper_cfg.model == "e2e-chunked":
         get_model = lambda: e2e_chunked.get_e2e_chunked("base_ae", hyper_cfg)
     elif hyper_cfg.model == "e2e-chunked_res-ae":

@@ -61,13 +61,15 @@ class E2EChunked(nn.Module):
         return dec
 
 
-def _create_e2e_chunked_ae(
-    seq_length: int, seq_num: int, latent_dim: int, seq_cat: bool
-):
-    encoder = ae.Encoder(seq_length, latent_dim)
-    decoder = ae.Decoder(seq_length, latent_dim, encoder.output_lengths)
+def _create_e2e_chunked_ae(hyper_cfg: HyperConfig):
+    seq_len = hyper_cfg.seq_len
+    latent_dim = hyper_cfg.latent_dim
+    encoder = ae.Encoder(seq_len, latent_dim)
+    decoder = ae.Decoder(seq_len, latent_dim, encoder.output_lengths)
     trf = transformer.Transformer(
-        dim_model=latent_dim if seq_cat else latent_dim * encoder.output_lengths[-1],
+        dim_model=latent_dim
+        if hyper_cfg.seq_cat
+        else latent_dim * encoder.output_lengths[-1],
         num_heads=latent_dim // 4,
         num_encoder_layers=1,
         num_decoder_layers=1,
@@ -77,11 +79,11 @@ def _create_e2e_chunked_ae(
         encoder,
         trf,
         decoder,
-        seq_length,
+        seq_len,
         latent_dim,
-        seq_num,
+        hyper_cfg.num_seq,
         encoder.output_lengths[-1],
-        seq_cat,
+        hyper_cfg.seq_cat,
     )
 
 
@@ -114,12 +116,7 @@ def _create_e2e_chunked_res_ae(hyper_cfg: HyperConfig):
 
 def get_e2e_chunked(name: str, hyper_cfg: HyperConfig):
     if name == "base_ae":
-        return _create_e2e_chunked_ae(
-            hyper_cfg.seq_len,
-            hyper_cfg.num_seq,
-            hyper_cfg.latent_dim,
-            hyper_cfg.seq_cat,
-        )
+        return _create_e2e_chunked_ae(hyper_cfg)
     elif name == "base_res-ae":
         return _create_e2e_chunked_res_ae(hyper_cfg)
     else:

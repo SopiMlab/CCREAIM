@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 
+from ..utils.cfg_classes import HyperConfig
 from . import ae, transformer, vae, vqvae
 
 
@@ -44,10 +45,14 @@ def _create_e2e_vae(seq_length: int, num_seq: int, latent_dim: int):
     return E2E(encoder, trf, decoder)
 
 
-def get_e2e(name: str, seq_length: int, num_seq: int, latent_dim: int):
+def get_e2e(name: str, hyper_cfg: HyperConfig):
     if name == "base_ae":
-        return _create_e2e_ae(seq_length, num_seq, latent_dim)
+        return _create_e2e_ae(
+            hyper_cfg.seq_len, hyper_cfg.num_seq, hyper_cfg.latent_dim
+        )
     elif name == "base_vae":
-        return _create_e2e_vae(seq_length, num_seq, latent_dim)
+        return _create_e2e_vae(
+            hyper_cfg.seq_len, hyper_cfg.num_seq, hyper_cfg.latent_dim
+        )
     else:
         raise ValueError("Unknown autoencoder name: '{}'".format(name))
