@@ -4,12 +4,12 @@ process:
   cross_val_k: 1
 
 logging:
-  exp_name: smoke
+  exp_name: system
   checkpoint: 10
   save_pred: true
 
 data:
-  data_tar: /scratch/other/sopi/CCREAIM/datasets/test/out/chopped_65536.tar
+  data_tar: /scratch/other/sopi/CCREAIM/datasets/chopped_65536.tar
 
 hyper:
   model: e2e-chunked_res-ae
@@ -18,8 +18,8 @@ hyper:
   num_seq: 16
   seq_cat: true
   seq_len: 4096
-  epochs: 2
-  batch_size: 8
+  epochs: 50
+  batch_size: 64
   transformer:
     num_heads_latent_dimension_div: 4
     num_enc_layers: 1
@@ -57,9 +57,9 @@ resources:
   num_workers: 4
 
   # General resource configs
-  timeout_min: 10
+  timeout_min: 1440
   cpus_per_task: 4
   gpus_per_node: 1
   tasks_per_node: 1
-  mem_gb: 1
+  mem_gb: 16
   nodes: 1

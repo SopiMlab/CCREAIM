@@ -137,6 +137,19 @@ def spec(seq: torch.Tensor, stft_val: STFTValues):
     )
 
 
+def spectral_loss(
+    seq: torch.Tensor, pred: torch.Tensor, spectral_loss_cfg: SpectralLossConfig
+) -> torch.Tensor:
+    stft_val = STFTValues(
+        spectral_loss_cfg.stft_bins[0],
+        spectral_loss_cfg.stft_hop_length[0],
+        spectral_loss_cfg.stft_window_size[0],
+    )
+    spec_in = spec(seq.float().squeeze(), stft_val)
+    spec_out = spec(pred.float().squeeze(), stft_val)
+    return norm(spec_in - spec_out)
+
+
 def multispectral_loss(
     seq: torch.Tensor, pred: torch.Tensor, spectral_loss_cfg: SpectralLossConfig
 ) -> torch.Tensor:
@@ -157,3 +170,38 @@ def multispectral_loss(
             spec_out = spec(pred[:, i], stft_val)
             losses[:, i] = norm(spec_in - spec_out)
     return losses
+
+
+def spectral_convergence(
+    seq: torch.Tensor,
+    pred: torch.Tensor,
+    spectral_loss_cfg: SpectralLossConfig,
+    epsilon: float = 2e-3,
+) -> torch.Tensor:
+    stft_val = STFTValues(
+        spectral_loss_cfg.stft_bins[0],
+        spectral_loss_cfg.stft_hop_length[0],
+        spectral_loss_cfg.stft_window_size[0],
+    )
+    spec_in = spec(seq.float().squeeze(), stft_val)
+    spec_out = spec(pred.float().squeeze(), stft_val)
+    gt_norm = norm(spec_in)
+    residual_norm = norm(spec_in - spec_out)
+    mask = (gt_norm > epsilon).float()
+    return (residual_norm * mask) / torch.clamp(gt_norm, min=epsilon)
+
+
+def log_magnitude_loss(
+    seq: torch.Tensor,
+    pred: torch.Tensor,
+    spectral_loss_cfg: SpectralLossConfig,
+    epsilon: float = 1e-4,
+) -> torch.Tensor:
+    stft_val = STFTValues(
+        spectral_loss_cfg.stft_bins[0],
+        spectral_loss_cfg.stft_hop_length[0],
+        spectral_loss_cfg.stft_window_size[0],
+    )
+    spec_in = torch.log(spec(seq.float().squeeze(), stft_val) + epsilon)
+    spec_out = torch.log(spec(pred.float().squeeze(), stft_val) + epsilon)
+    return torch.abs(spec_in - spec_out)

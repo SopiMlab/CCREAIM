@@ -1,10 +1,12 @@
 # @package _global_
 process:
   train: true
-  cross_val_k: 0
+  cross_val_k: 1
 
 logging:
   exp_name: smoke
+  save_pred: true
+  save_one_per_batch: false
 
 data:
   data_tar: /scratch/other/sopi/CCREAIM/datasets/test/out/chopped_65536.tar
@@ -12,9 +14,9 @@ data:
 hyper:
   model: res-vae
   seed: 0
-  latent_dim: 8
+  latent_dim: 16
   seq_len: 65536
-  epochs: 2
+  epochs: 50
   batch_size: 8
   learning_rate: 1e-4
   kld_loss:
@@ -45,3 +47,16 @@ hyper:
     block_m_conv: 1.0
     block_dilation_growth_rate: 3
     block_dilation_cycle: null
+
+
+resources:
+  # DataLoader num_workers parameter
+  num_workers: 2
+
+  # General resource configs
+  timeout_min: 120
+  cpus_per_task: 2
+  gpus_per_node: 0
+  tasks_per_node: 1
+  mem_gb: 16
+  nodes: 1

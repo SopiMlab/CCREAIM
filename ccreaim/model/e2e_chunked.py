@@ -60,6 +60,34 @@ class E2EChunked(nn.Module):
         dec = dec.view(-1, self.seq_num - 1, self.seq_length)
         return dec
 
+    def generate(self, data: torch.Tensor, in_len: int, gen_len: int) -> torch.Tensor:
+        data = data.flatten(0, 1).unsqueeze(1)
+        enc_batch = self.encoder(data).transpose(-1, -2)
+        enc = enc_batch.view(-1, in_len, self.enc_out_length, self.latent_dim)
+        if self.seq_cat:
+            enc = enc.flatten(1, 2)  # merge into sequence of vectors
+        else:
+            enc = enc.flatten(2, -1)
+
+        enc_src = enc
+        print(enc_src.size())
+        tgt = torch.zeros_like(enc_src[:, 0:1], device=enc_src.device)
+        for i in range(gen_len * self.enc_out_length):
+            tgt_mask = self.trf.get_tgt_mask(tgt.size(1))
+            tgt_mask = tgt_mask.to(tgt.device)
+            trf_pred = self.trf(enc_src, tgt, tgt_mask=tgt_mask)
+            tgt = torch.cat([tgt, trf_pred[:, -1:, :]], dim=1)
+
+        z_comb = tgt.view(-1, gen_len, self.enc_out_length, self.latent_dim)
+        print(z_comb.size())
+        z_comb = z_comb.flatten(0, 1).transpose(-1, -2)
+        print(z_comb.size())
+        dec = self.decoder(z_comb)
+        dec = dec.squeeze()
+        dec = dec.view(-1, gen_len - 1, self.seq_length)
+
+        return dec
+
 
 def _create_e2e_chunked_ae(hyper_cfg: HyperConfig):
     seq_len = hyper_cfg.seq_len
@@ -70,9 +98,9 @@ def _create_e2e_chunked_ae(hyper_cfg: HyperConfig):
         dim_model=latent_dim
         if hyper_cfg.seq_cat
         else latent_dim * encoder.output_lengths[-1],
-        num_heads=latent_dim // 4,
-        num_encoder_layers=1,
-        num_decoder_layers=1,
+        num_heads=latent_dim // hyper_cfg.transformer.num_heads_latent_dimension_div,
+        num_encoder_layers=hyper_cfg.transformer.num_enc_layers,
+        num_decoder_layers=hyper_cfg.transformer.num_dec_layers,
         dropout_p=0.1,
     )
     return E2EChunked(

@@ -1,0 +1,20 @@
+name: /scratch/other/sopi/conda/ccreaim
+channels:
+  - defaults
+dependencies:
+  - python=3.9
+  - torchaudio
+  - cudatoolkit=11.6
+  - pytorch=1.13
+  - wandb
+  - hydra-core
+  - pre-commit
+  - pylint
+  - ffmpeg
+  - jupyter
+  - notebook
+  - scikit-learn
+  - pytorch-cuda=11.7
+  - librosa
+  - pandas
+prefix: /scratch/other/sopi/conda/ccreaim
