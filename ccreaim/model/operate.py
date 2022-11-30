@@ -40,8 +40,8 @@ def step(
         multi_spec = multi_spec.mean()
         info.update(
             {
-                "loss_mse": float(mse.item()),
-                "loss_spectral": spec_weight * multi_spec.item(),
+                "train/loss_mse": float(mse.item()),
+                "train/loss_spectral": spec_weight * multi_spec.item(),
             }
         )
         loss = mse + spec_weight * multi_spec
@@ -49,20 +49,33 @@ def step(
         seq, _ = batch
         seq = seq.to(device)
         pred, mu, sigma = model(seq)
+        mae = torch.abs(pred - seq).mean()
         mse = F.mse_loss(pred, seq)
         kld_weight = hyper_cfg.kld_loss.weight
         kld = -0.5 * (1 + torch.log(sigma**2) - mu**2 - sigma**2).sum()
         spec_weight = hyper_cfg.spectral_loss.weight
+        spec_conv = util.spectral_convergence(seq, pred, hyper_cfg.spectral_loss)
+        spec_conv = spec_conv.mean()
         multi_spec = util.multispectral_loss(seq, pred, hyper_cfg.spectral_loss)
         multi_spec = multi_spec.mean()
         info.update(
             {
-                "loss_mse": float(mse.item()),
-                "loss_kld": float((kld_weight * kld).item()),
-                "loss_spectral": float(spec_weight * multi_spec.item()),
+                "train/loss_mae": float(mae.item()),
+                "train/loss_mse": float(mse.item()),
+                "train/loss_kld": float((kld_weight * kld).item()),
+                "train/loss_spectral_convergence": float(
+                    spec_weight * spec_conv.item()
+                ),
+                "train/loss_multi_spectral": float(spec_weight * multi_spec.item()),
             }
         )
-        loss = mse + kld_weight * kld + spec_weight * multi_spec
+        loss = (
+            mse
+            + mae
+            + kld_weight * kld
+            + spec_weight * spec_conv
+            + spec_weight * multi_spec
+        )
     elif isinstance(model, vqvae.VQVAE):
         seq, _ = batch
         seq = seq.to(device)
@@ -81,11 +94,11 @@ def step(
         multi_spec = multi_spec.mean()
         info.update(
             {
-                "commitment_loss": commitment_loss.item(),
-                "embedding_loss": hyper_cfg.vqvae.beta * embedding_loss.item(),
-                "vq_loss": vq_loss.item(),
-                "loss_mse": float(mse.item()),
-                "loss_spectral": float(spec_weight * multi_spec.item()),
+                "train/commitment_loss": commitment_loss.item(),
+                "train/embedding_loss": hyper_cfg.vqvae.beta * embedding_loss.item(),
+                "train/vq_loss": vq_loss.item(),
+                "train/loss_mse": float(mse.item()),
+                "train/loss_spectral": float(spec_weight * multi_spec.item()),
             }
         )
         loss = mse + spec_weight * multi_spec + vq_loss
@@ -99,8 +112,8 @@ def step(
         multi_spec = multi_spec.mean()
         info.update(
             {
-                "loss_mse": float(mse.item()),
-                "loss_spectral": float(spec_weight * multi_spec.item()),
+                "train/loss_mse": float(mse.item()),
+                "train/loss_spectral": float(spec_weight * multi_spec.item()),
             }
         )
         loss = mse + spec_weight * multi_spec
