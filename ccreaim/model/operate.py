@@ -2,10 +2,11 @@ from typing import Union
 
 import torch
 from torch.nn import functional as F
+from utils.rave_core import get_beta_kl_cyclic_annealed
 
 from ..utils import util
 from ..utils.cfg_classes import HyperConfig
-from . import ae, e2e, e2e_chunked, transformer, vae, vqvae
+from . import ae, e2e, e2e_chunked, rave, transformer, vae, vqvae
 
 
 def step(
@@ -102,6 +103,98 @@ def step(
             }
         )
         loss = mse + spec_weight * multi_spec + vq_loss
+    elif isinstance(model, rave.RAVE):
+        x = batch.unsqueeze(1)
+
+        if model.pqmf is not None:  # MULTIBAND DECOMPOSITION
+            x = model.pqmf(x)
+
+        if model.warmed_up:  # EVAL ENCODER
+            model.encoder.eval()
+        enc = model.encoder(x)
+        z, kl = model.reparametrize(*enc)
+
+        if model.warmed_up:  # FREEZE ENCODER
+            z = z.detach()
+            kl = kl.detach()
+
+        # DECODE LATENT
+        y = model.decoder(z, add_noise=model.warmed_up)
+
+        # DISTANCE BETWEEN INPUT AND OUTPUT
+        distance = model.distance(x, y)
+
+        if model.pqmf is not None:  # FULL BAND RECOMPOSITION
+            x = model.pqmf.inverse(x)
+            y = model.pqmf.inverse(y)
+            distance = distance + model.distance(x, y)
+
+        loud_x = model.loudness(x)
+        loud_y = model.loudness(y)
+        loud_dist = (loud_x - loud_y).pow(2).mean()
+        distance = distance + loud_dist
+
+        feature_matching_distance = 0.0
+        if False:  # model.warmed_up:  # DISCRIMINATION
+            feature_true = model.discriminator(x)
+            feature_fake = model.discriminator(y)
+
+            loss_dis = 0
+            loss_adv = 0
+
+            pred_true = 0
+            pred_fake = 0
+
+            for scale_true, scale_fake in zip(feature_true, feature_fake):
+                feature_matching_distance = feature_matching_distance + 10 * sum(
+                    map(
+                        lambda x, y: abs(x - y).mean(),
+                        scale_true,
+                        scale_fake,
+                    )
+                ) / len(scale_true)
+
+                _dis, _adv = model.adversarial_combine(
+                    scale_true[-1],
+                    scale_fake[-1],
+                    mode=model.mode,
+                )
+
+                pred_true = pred_true + scale_true[-1].mean()
+                pred_fake = pred_fake + scale_fake[-1].mean()
+
+                loss_dis = loss_dis + _dis
+                loss_adv = loss_adv + _adv
+
+        else:
+            pred_true = torch.tensor(0.0).to(x)
+            pred_fake = torch.tensor(0.0).to(x)
+            loss_dis = torch.tensor(0.0).to(x)
+            loss_adv = torch.tensor(0.0).to(x)
+
+        # COMPOSE GEN LOSS
+        beta = get_beta_kl_cyclic_annealed(
+            step=model.global_step,
+            cycle_size=5e4,
+            warmup=model.warmup // 2,
+            min_beta=model.min_kl,
+            max_beta=model.max_kl,
+        )
+        loss_gen = distance + loss_adv + beta * kl
+        if model.feature_match:
+            loss_gen = loss_gen + feature_matching_distance
+
+        # OPTIMIZATION
+        if False:  # model.global_step % 2 and model.warmed_up:
+            dis_opt.zero_grad()
+            loss_dis.backward()
+            dis_opt.step()
+        else:
+            loss = loss_gen
+            # gen_opt.zero_grad()
+            # loss_gen.backward()
+            # gen_opt.step()
+
     else:
         seq, _ = batch
         seq = seq.to(device)
@@ -132,6 +225,8 @@ def get_model_init_function(hyper_cfg: HyperConfig):
         get_model = lambda: vae.get_vae("res-vae", hyper_cfg)
     elif hyper_cfg.model == "vq-vae":
         get_model = lambda: vqvae.get_vqvae("base", hyper_cfg)
+    elif hyper_cfg.model == "rave":
+        get_model = lambda: rave.get_rave("base", hyper_cfg)
     elif hyper_cfg.model == "transformer":
         get_model = lambda: transformer.get_transformer("base", hyper_cfg)
     elif hyper_cfg.model == "e2e":
