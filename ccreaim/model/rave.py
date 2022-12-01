@@ -20,8 +20,6 @@ from ..utils.rave_core import (
 
 log = logging.getLogger(__name__)
 
-from time import time
-
 import cached_conv as cc
 
 
@@ -554,19 +552,6 @@ class RAVE(nn.Module):
             raise NotImplementedError
         return loss_dis, loss_gen
 
-    def training_step(self, batch, batch_idx):
-
-        # LOGGING
-        log.info("loss_dis", loss_dis)
-        log.info("loss_gen", loss_gen)
-        log.info("loud_dist", loud_dist)
-        log.info("regularization", kl)
-        log.info("pred_true", pred_true.mean())
-        log.info("pred_fake", pred_fake.mean())
-        log.info("distance", distance)
-        log.info("beta", beta)
-        log.info("feature_matching", feature_matching_distance)
-
     def encode(self, x):
         if self.pqmf is not None:
             x = self.pqmf(x)
@@ -637,10 +622,11 @@ class RAVE(nn.Module):
 
 
 def get_rave(name: str, hyper_cfg: HyperConfig) -> RAVE:
+    cc.use_cached_conv(False)
     model = RAVE(
         data_size=16,
         capacity=32,
-        latent_size=128,
+        latent_size=hyper_cfg.latent_dim,
         ratios=[4, 4, 2, 2, 2],
         bias=True,
         loud_stride=1,

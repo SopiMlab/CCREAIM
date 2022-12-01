@@ -2,11 +2,13 @@ from typing import Union
 
 import torch
 from torch.nn import functional as F
-from utils.rave_core import get_beta_kl_cyclic_annealed
 
 from ..utils import util
 from ..utils.cfg_classes import HyperConfig
+from ..utils.rave_core import get_beta_kl_cyclic_annealed
 from . import ae, e2e, e2e_chunked, rave, transformer, vae, vqvae
+
+NUM_STEPS: int = 0
 
 
 def step(
@@ -104,8 +106,8 @@ def step(
         )
         loss = mse + spec_weight * multi_spec + vq_loss
     elif isinstance(model, rave.RAVE):
-        x = batch.unsqueeze(1)
-
+        x, _ = batch
+        x = x.to(device)
         if model.pqmf is not None:  # MULTIBAND DECOMPOSITION
             x = model.pqmf(x)
 
@@ -119,18 +121,18 @@ def step(
             kl = kl.detach()
 
         # DECODE LATENT
-        y = model.decoder(z, add_noise=model.warmed_up)
+        pred = model.decoder(z, add_noise=model.warmed_up)
 
         # DISTANCE BETWEEN INPUT AND OUTPUT
-        distance = model.distance(x, y)
+        distance = model.distance(x, pred)
 
         if model.pqmf is not None:  # FULL BAND RECOMPOSITION
             x = model.pqmf.inverse(x)
-            y = model.pqmf.inverse(y)
-            distance = distance + model.distance(x, y)
+            pred = model.pqmf.inverse(pred)
+            distance = distance + model.distance(x, pred)
 
         loud_x = model.loudness(x)
-        loud_y = model.loudness(y)
+        loud_y = model.loudness(pred)
         loud_dist = (loud_x - loud_y).pow(2).mean()
         distance = distance + loud_dist
 
@@ -173,8 +175,10 @@ def step(
             loss_adv = torch.tensor(0.0).to(x)
 
         # COMPOSE GEN LOSS
+        global NUM_STEPS
+        NUM_STEPS += 1
         beta = get_beta_kl_cyclic_annealed(
-            step=model.global_step,
+            step=NUM_STEPS,
             cycle_size=5e4,
             warmup=model.warmup // 2,
             min_beta=model.min_kl,
@@ -194,6 +198,13 @@ def step(
             # gen_opt.zero_grad()
             # loss_gen.backward()
             # gen_opt.step()
+
+        info.update(
+            {
+                "train/loss_kld": float(beta * kl),
+                "train/loss_multi_spectral": float(distance),
+            }
+        )
 
     else:
         seq, _ = batch
