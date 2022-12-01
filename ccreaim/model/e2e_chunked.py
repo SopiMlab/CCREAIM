@@ -60,7 +60,9 @@ class E2EChunked(nn.Module):
         dec = dec.view(-1, self.seq_num - 1, self.seq_length)
         return dec
 
-    def generate(self, data: torch.Tensor, in_len: int, gen_len: int) -> torch.Tensor:
+    def generate(
+        self, data: torch.Tensor, in_len: int, feed_in_len: int, gen_len: int
+    ) -> torch.Tensor:
         data = data.flatten(0, 1).unsqueeze(1)
         enc_batch = self.encoder(data).transpose(-1, -2)
         enc = enc_batch.view(-1, in_len, self.enc_out_length, self.latent_dim)
@@ -70,21 +72,25 @@ class E2EChunked(nn.Module):
             enc = enc.flatten(2, -1)
 
         enc_src = enc
-        print(enc_src.size())
-        tgt = torch.zeros_like(enc_src[:, 0:1], device=enc_src.device)
+        if feed_in_len == 0:
+            tgt = torch.zeros_like(enc_src[:, 0:1], device=enc_src.device)
+        else:
+            tgt = enc_src[:, 0 : feed_in_len * self.enc_out_length]
+
         for i in range(gen_len * self.enc_out_length):
             tgt_mask = self.trf.get_tgt_mask(tgt.size(1))
             tgt_mask = tgt_mask.to(tgt.device)
             trf_pred = self.trf(enc_src, tgt, tgt_mask=tgt_mask)
             tgt = torch.cat([tgt, trf_pred[:, -1:, :]], dim=1)
 
-        z_comb = tgt.view(-1, gen_len, self.enc_out_length, self.latent_dim)
-        print(z_comb.size())
+        z_comb = tgt[:, feed_in_len:, :].view(
+            -1, gen_len, self.enc_out_length, self.latent_dim
+        )
+        # z_comb = tgt.view(-1, gen_len + feed_in_len, self.enc_out_length, self.latent_dim)
         z_comb = z_comb.flatten(0, 1).transpose(-1, -2)
-        print(z_comb.size())
         dec = self.decoder(z_comb)
         dec = dec.squeeze()
-        dec = dec.view(-1, gen_len - 1, self.seq_length)
+        dec = dec.view(-1, gen_len + feed_in_len, self.seq_length)
 
         return dec
 
