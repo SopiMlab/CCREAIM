@@ -44,6 +44,7 @@ def test(
         running_loss = torch.tensor(0.0)
         for batchnum, batch in enumerate(dataloader):
             loss, pred, _ = operate.step(model, batch, device, cfg.hyper)
+            loss_gen, loss_dis = loss
 
             if cfg.logging.save_pred:
                 save_root = Path(cfg.logging.pred_output)
@@ -67,7 +68,7 @@ def test(
                     save_path = Path(cfg.logging.encoder_output) / Path(n).stem
                     torch.save(f.clone().cpu(), str(save_path) + ".pt")
 
-            running_loss += loss.detach().cpu().item()
+            running_loss += loss_gen.detach().cpu().item()
 
     if cfg.logging.wandb:
         wandb.log({"test/loss": running_loss})

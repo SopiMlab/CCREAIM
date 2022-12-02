@@ -42,23 +42,31 @@ def train(
         checkpoints_path /= Path(f"fold_{fold}")
     checkpoints_path.mkdir(exist_ok=True, parents=True)
 
+    gen_opt, dis_opt = optimizer
+
     model.train()
     for epoch in range(1, cfg.hyper.epochs + 1):
         running_loss = torch.tensor(0.0)
         for batchnum, batch in enumerate(dataloader):
             loss, _, info = operate.step(model, batch, device, cfg.hyper)
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+            loss_gen, loss_dis = loss
+            if batchnum % 2 and model.warmed_up:
+                dis_opt.zero_grad()
+                loss_dis.backward()
+                dis_opt.step()
+            else:
+                gen_opt.zero_grad()
+                loss_gen.backward()
+                gen_opt.step()
 
-            running_loss += loss.detach().cpu().item()
+            running_loss += loss_gen.detach().cpu().item()
             if not cfg.logging.silent and batchnum % 100 == 0:
                 log.info(
                     f"epoch: {epoch:03d}/{cfg.hyper.epochs:03d} - batch: {batchnum:05d}/{len(dataloader):05d} - loss: {loss}"
                 )
             if cfg.logging.wandb:
                 wandb.log(
-                    {"train/loss": loss, "epoch": epoch, "batch": batchnum, **info}
+                    {"train/loss": loss_gen, "epoch": epoch, "batch": batchnum, **info}
                 )
 
         if not cfg.logging.silent:
@@ -71,7 +79,8 @@ def train(
                     "epoch": epoch,
                     "model_state_dict": model.state_dict(),
                     "hyper_config": OmegaConf.to_container(cfg.hyper),
-                    "optimizer_state_dict": optimizer.state_dict(),
+                    "gen_optimizer_state_dict": gen_opt.state_dict(),
+                    "dis_optimizer_state_dict": dis_opt.state_dict(),
                     "loss": running_loss,
                 },
                 save_path,
@@ -84,7 +93,8 @@ def train(
             "epoch": cfg.hyper.epochs,
             "model_state_dict": model.state_dict(),
             "hyper_config": OmegaConf.to_container(cfg.hyper),
-            "optimizer_state_dict": optimizer.state_dict(),
+            "gen_optimizer_state_dict": gen_opt.state_dict(),
+            "dis_optimizer_state_dict": dis_opt.state_dict(),
             "loss": 0,
         },
         final_save_path,

@@ -47,7 +47,15 @@ def cross_validation(
     elif cfg.process.cross_val_k == 1:
         model = get_model()
         model.to(device)
-        optimizer = torch.optim.Adam(model.parameters(), cfg.hyper.learning_rate)
+        #
+        # optimizer = torch.optim.Adam(model.parameters(), cfg.hyper.learning_rate)
+        gen_p = list(model.encoder.parameters())
+        gen_p += list(model.decoder.parameters())
+        dis_p = list(model.discriminator.parameters())
+
+        gen_opt = torch.optim.Adam(gen_p, 1e-4, (0.5, 0.9))
+        dis_opt = torch.optim.Adam(dis_p, 1e-4, (0.5, 0.9))
+
         dataloader = torch.utils.data.DataLoader(
             dataset,
             batch_size=cfg.hyper.batch_size,
@@ -55,7 +63,7 @@ def cross_validation(
             num_workers=cfg.resources.num_workers,
         )
         log.info(f"TRAINING STARTED")
-        train.train(model, dataloader, optimizer, device, cfg)
+        train.train(model, dataloader, (gen_opt, dis_opt), device, cfg)
 
         log.info(f"VALIDATION STARTED")
         test.test(model, dataloader, device, cfg)

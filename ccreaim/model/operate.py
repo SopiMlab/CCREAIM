@@ -8,8 +8,6 @@ from ..utils.cfg_classes import HyperConfig
 from ..utils.rave_core import get_beta_kl_cyclic_annealed
 from . import ae, e2e, e2e_chunked, rave, transformer, vae, vqvae
 
-NUM_STEPS: int = 0
-
 
 def step(
     model: torch.nn.Module,
@@ -108,6 +106,11 @@ def step(
     elif isinstance(model, rave.RAVE):
         x, _ = batch
         x = x.to(device)
+
+        model.saved_step += 1
+        if model.saved_step > model.warmup:
+            model.warmed_up = True
+
         if model.pqmf is not None:  # MULTIBAND DECOMPOSITION
             x = model.pqmf(x)
 
@@ -137,9 +140,9 @@ def step(
         distance = distance + loud_dist
 
         feature_matching_distance = 0.0
-        if False:  # model.warmed_up:  # DISCRIMINATION
+        if model.warmed_up:  # DISCRIMINATION
             feature_true = model.discriminator(x)
-            feature_fake = model.discriminator(y)
+            feature_fake = model.discriminator(pred)
 
             loss_dis = 0
             loss_adv = 0
@@ -175,10 +178,8 @@ def step(
             loss_adv = torch.tensor(0.0).to(x)
 
         # COMPOSE GEN LOSS
-        global NUM_STEPS
-        NUM_STEPS += 1
         beta = get_beta_kl_cyclic_annealed(
-            step=NUM_STEPS,
+            step=model.saved_step.cpu(),
             cycle_size=5e4,
             warmup=model.warmup // 2,
             min_beta=model.min_kl,
@@ -188,23 +189,15 @@ def step(
         if model.feature_match:
             loss_gen = loss_gen + feature_matching_distance
 
-        # OPTIMIZATION
-        if False:  # model.global_step % 2 and model.warmed_up:
-            dis_opt.zero_grad()
-            loss_dis.backward()
-            dis_opt.step()
-        else:
-            loss = loss_gen
-            # gen_opt.zero_grad()
-            # loss_gen.backward()
-            # gen_opt.step()
-
         info.update(
             {
                 "train/loss_kld": float(beta * kl),
                 "train/loss_multi_spectral": float(distance),
+                "train/loss_adv": float(loss_adv),
+                "train/loss_dis": float(loss_dis),
             }
         )
+        loss = (loss_gen, loss_adv)
 
     else:
         seq, _ = batch

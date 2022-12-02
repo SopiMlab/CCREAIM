@@ -636,7 +636,7 @@ def get_rave(name: str, hyper_cfg: HyperConfig) -> RAVE:
         d_capacity=16,
         d_multiplier=4,
         d_n_layers=4,
-        warmup=1000000,
+        warmup=1000,
         mode="hinge",
         no_latency=False,
         sr=16000,
