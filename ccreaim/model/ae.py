@@ -553,6 +553,7 @@ def _res_ae_configs(
         depth=res_ae_config.block_depth,
         m_conv=res_ae_config.block_m_conv,
         dilation_cycle=res_ae_config.block_dilation_cycle,
+        dilation_growth_rate=res_ae_config.block_dilation_growth_rate,
     )
     return hyper_cfg.latent_dim, block_kwargs, res_ae_config
 
