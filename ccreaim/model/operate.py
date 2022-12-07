@@ -41,7 +41,7 @@ def step(
         info.update(
             {
                 "train/loss_mse": float(mse.item()),
-                "train/loss_spectral": spec_weight * multi_spec.item(),
+                "train/loss_multi_spectral": spec_weight * multi_spec.item(),
             }
         )
         loss = mse + spec_weight * multi_spec
@@ -68,9 +68,9 @@ def step(
         info.update(
             {
                 "train/loss_mse": float(mse.item()),
-                "train/loss_spectral": spec_weight * multi_spec.item(),
+                "train/loss_multi_spectral": spec_weight * multi_spec.item(),
                 "train/commitment_loss": hyper_cfg.vqvae.beta * commitment_loss.item(),
-                "train/commitment_loss": embedding_loss.item(),
+                "train/embedding_loss": embedding_loss.item(),
             }
         )
         loss = mse + spec_weight * multi_spec + vq_loss
