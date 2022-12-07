@@ -54,10 +54,17 @@ class VectorQuantizer(nn.Module):
         return quantized_latents.transpose(1, 2).contiguous()
 
 
-def _create_vqvae(seq_length: int, latent_dim: int, num_embedings: int):
+def _create_vqvae(seq_length: int, latent_dim: int, num_embeddings: int):
     encoder = ae.Encoder(seq_length, latent_dim)
     decoder = ae.Decoder(seq_length, latent_dim, encoder.output_lengths)
-    reparam = VectorQuantizer(num_embedings, latent_dim)
+    reparam = VectorQuantizer(num_embeddings, latent_dim)
+    return VQVAE(encoder, decoder, reparam)
+
+
+def _create_res_vqvae(hyper_cfg: HyperConfig):
+    encoder = ae.get_res_encoder(hyper_cfg)
+    decoder = ae.get_res_decoder(hyper_cfg)
+    reparam = VectorQuantizer(hyper_cfg.vqvae.num_embeddings, hyper_cfg.latent_dim)
     return VQVAE(encoder, decoder, reparam)
 
 
@@ -66,5 +73,7 @@ def get_vqvae(name: str, hyper_cfg: HyperConfig):
         return _create_vqvae(
             hyper_cfg.seq_len, hyper_cfg.latent_dim, hyper_cfg.vqvae.num_embeddings
         )
+    elif name == "res-vqvae":
+        return _create_res_vqvae(hyper_cfg)
     else:
         raise ValueError("Unknown autoencoder name: '{}'".format(name))
