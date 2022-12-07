@@ -45,6 +45,35 @@ def step(
             }
         )
         loss = mse + spec_weight * multi_spec
+    elif isinstance(model, e2e_chunked.E2EChunkedVQVAE):
+        seq, _, pad_mask = batch
+        seq = seq.to(device)
+        pad_mask = pad_mask.to(device)
+        pred, latents, quantized_latents = model(seq, pad_mask)
+        tgt = seq[:, 1:, :]
+        tgt_pad_mask = pad_mask[:, 1:]
+
+        # Compute the VQ Losses
+        commitment_loss = F.mse_loss(quantized_latents.detach(), latents)
+        embedding_loss = F.mse_loss(quantized_latents, latents.detach())
+        vq_loss = hyper_cfg.vqvae.beta * commitment_loss + embedding_loss
+
+        mse = F.mse_loss(pred, tgt, reduction="none")
+        mse[tgt_pad_mask] = 0
+        mse = mse.mean()
+        spec_weight = hyper_cfg.spectral_loss.weight
+        multi_spec = util.multispectral_loss(tgt, pred, hyper_cfg.spectral_loss)
+        multi_spec[tgt_pad_mask] = 0
+        multi_spec = multi_spec.mean()
+        info.update(
+            {
+                "train/loss_mse": float(mse.item()),
+                "train/loss_spectral": spec_weight * multi_spec.item(),
+                "train/commitment_loss": hyper_cfg.vqvae.beta * commitment_loss.item(),
+                "train/commitment_loss": embedding_loss.item(),
+            }
+        )
+        loss = mse + spec_weight * multi_spec + vq_loss
     elif isinstance(model, vae.VAE):
         seq, _ = batch
         seq = seq.to(device)
@@ -86,8 +115,6 @@ def step(
         embedding_loss = F.mse_loss(quantized_latents, latents.detach())
 
         vq_loss = commitment_loss * hyper_cfg.vqvae.beta + embedding_loss
-
-        # Add the residue back to the latents
 
         spec_weight = hyper_cfg.spectral_loss.weight
         multi_spec = util.multispectral_loss(seq, pred, hyper_cfg.spectral_loss)
@@ -142,6 +169,8 @@ def get_model_init_function(hyper_cfg: HyperConfig):
         get_model = lambda: e2e_chunked.get_e2e_chunked("base_ae", hyper_cfg)
     elif hyper_cfg.model == "e2e-chunked_res-ae":
         get_model = lambda: e2e_chunked.get_e2e_chunked("base_res-ae", hyper_cfg)
+    elif hyper_cfg.model == "e2e-chunked_res-vqvae":
+        get_model = lambda: e2e_chunked.get_e2e_chunked("base_res-vqvae", hyper_cfg)
     else:
         raise ValueError(f"Model type {hyper_cfg.model} is not defined!")
     return get_model

@@ -53,6 +53,9 @@ class VectorQuantizer(nn.Module):
         # [B x D x S]
         return quantized_latents.transpose(1, 2).contiguous()
 
+    def lookup(self, token_ids: torch.Tensor) -> torch.Tensor:
+        return self.embedding(token_ids)
+
 
 def _create_vqvae(seq_length: int, latent_dim: int, num_embeddings: int):
     encoder = ae.Encoder(seq_length, latent_dim)
