@@ -85,7 +85,7 @@ class ResAeConfig:
     block_depth: int
     block_m_conv: float
     block_dilation_growth_rate: int
-    block_dilation_cycle: int
+    block_dilation_cycle: Optional[int] = None
 
 
 @dataclass
