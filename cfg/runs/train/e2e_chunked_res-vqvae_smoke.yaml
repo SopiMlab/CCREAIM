@@ -54,6 +54,7 @@ hyper:
   vqvae:
     num_embeddings: 200
     beta: 0.25
+    reset_patience: -1
 
 
 resources:

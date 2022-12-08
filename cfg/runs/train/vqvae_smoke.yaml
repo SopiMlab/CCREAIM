@@ -15,7 +15,7 @@ hyper:
   latent_dim: 64 #1,2,4,8
   seq_len: 65536
   epochs: 100
-  batch_size: 64
+  batch_size: 4
   learning_rate: 1e-5
   spectral_loss:
     weight: 1e-5
@@ -31,18 +31,19 @@ hyper:
       - 1200
       - 600
       - 240
-  vqvae:
-    num_embeddings: 2048
-    beta: 0.02
   res_ae:
     levels: 1 # orig 3
     downs_t: # orig [3,2,2]
-      - 7
+      - 3
     strides_t: # orig [2,2,2]
       - 2
     input_emb_width: 1
     block_width: 32
-    block_depth: 4
+    block_depth: 2
     block_m_conv: 1.0
     block_dilation_growth_rate: 3
     block_dilation_cycle: null
+  vqvae:
+    num_embeddings: 4
+    beta: 0.02
+    reset_patience: -1
