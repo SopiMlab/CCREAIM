@@ -99,6 +99,9 @@ class TransformerConfig:
 class VQVAEConfig:
     num_embeddings: int
     beta: float
+    # multiplier for reset threshold: 1 / (codebook_size * reset_patience)
+    # non-positive values turn off codebook resetting
+    reset_patience: int
 
 
 @dataclass
