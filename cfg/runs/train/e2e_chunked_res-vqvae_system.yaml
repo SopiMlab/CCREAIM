@@ -1,0 +1,69 @@
+# @package _global_
+process:
+  train: true
+  cross_val_k: 1
+
+logging:
+  exp_name: smoke
+  checkpoint: 10
+  save_pred: true
+
+data:
+  data_tar: /scratch/other/sopi/CCREAIM/datasets/chopped_65536.tar
+
+hyper:
+  model: e2e-chunked_res-vqvae
+  seed: 0
+  latent_dim: 32
+  num_seq: 16
+  seq_cat: true
+  seq_len: 4096
+  epochs: 20
+  batch_size: 64
+  transformer:
+    num_heads_latent_dimension_div: 4
+    num_enc_layers: 1
+    num_dec_layers: 1
+  learning_rate: 1e-5
+  spectral_loss:
+    weight: 1e-3
+    stft_bins:
+      - 2048
+      - 1024
+      - 512
+    stft_hop_length:
+      - 240
+      - 120
+      - 50
+    stft_window_size:
+      - 1200
+      - 600
+      - 240
+  res_ae:
+    levels: 1 # orig 3
+    downs_t: # orig [3,2,2]
+      - 3
+    strides_t: # orig [2,2,2]
+      - 4
+    input_emb_width: 1
+    block_width: 32
+    block_depth: 2
+    block_m_conv: 1.0
+    block_dilation_growth_rate: 3
+    block_dilation_cycle: null
+  vqvae:
+    num_embeddings: 16
+    beta: 0.2
+
+
+resources:
+  # DataLoader num_workers parameter
+  num_workers: 4
+
+  # General resource configs
+  timeout_min: 100
+  cpus_per_task: 4
+  gpus_per_node: 1
+  tasks_per_node: 1
+  mem_gb: 1
+  nodes: 1
