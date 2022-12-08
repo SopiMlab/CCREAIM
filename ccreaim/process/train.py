@@ -66,29 +66,35 @@ def train(
 
         if cfg.logging.checkpoint != 0 and epoch % cfg.logging.checkpoint == 0:
             save_path = checkpoints_path / Path(f"{model_name}_ep-{epoch:03d}.pt")
-            torch.save(
-                {
-                    "epoch": epoch,
-                    "model_state_dict": model.state_dict(),
-                    "hyper_config": OmegaConf.to_container(cfg.hyper),
-                    "optimizer_state_dict": optimizer.state_dict(),
-                    "loss": running_loss,
-                },
-                save_path,
-            )
+            try:
+                torch.save(
+                    {
+                        "epoch": epoch,
+                        "model_state_dict": model.state_dict(),
+                        "hyper_config": OmegaConf.to_container(cfg.hyper),
+                        "optimizer_state_dict": optimizer.state_dict(),
+                        "loss": running_loss,
+                    },
+                    save_path,
+                )
+            except Exception as e:
+                log.error(e)
 
     # Save final model
     final_save_path = checkpoints_path / Path(f"{model_name}_final.pt")
-    torch.save(
-        {
-            "epoch": cfg.hyper.epochs,
-            "model_state_dict": model.state_dict(),
-            "hyper_config": OmegaConf.to_container(cfg.hyper),
-            "optimizer_state_dict": optimizer.state_dict(),
-            "loss": 0,
-        },
-        final_save_path,
-    )
+    try:
+        torch.save(
+            {
+                "epoch": cfg.hyper.epochs,
+                "model_state_dict": model.state_dict(),
+                "hyper_config": OmegaConf.to_container(cfg.hyper),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "loss": 0,
+            },
+            final_save_path,
+        )
+    except Exception as e:
+        log.error(e)
 
     if cfg.logging.wandb:
         wandb.finish()

@@ -49,33 +49,39 @@ def chop_dataset(in_root: str, out_tar_file_path: str, ext: str, sample_length: 
             for i, cs in enumerate(chopped_samples):
                 out_name = str(pth.stem) + f"_{i:03d}" + ".wav"
                 with io.BytesIO() as buffer:
-                    torchaudio.save(  # type: ignore
-                        buffer,
-                        cs.unsqueeze(0),
-                        sample_rate,
-                        encoding="PCM_F",
-                        bits_per_sample=32,
-                    )
-                    out_info = tarfile.TarInfo(name=out_name)
-                    out_info.size = buffer.getbuffer().nbytes
-                    out_tar.addfile(out_info, buffer)
+                    try:
+                        torchaudio.save(  # type: ignore
+                            buffer,
+                            cs.unsqueeze(0),
+                            sample_rate,
+                            encoding="PCM_F",
+                            bits_per_sample=32,
+                        )
+                        out_info = tarfile.TarInfo(name=out_name)
+                        out_info.size = buffer.getbuffer().nbytes
+                        out_tar.addfile(out_info, buffer)
+                    except Exception as e:
+                        log.error(e)
 
 
 def save_model_prediction(model_name: str, pred: torch.Tensor, save_path: Path) -> None:
-    if model_name == "transformer":
-        torch.save(pred, save_path)
-    elif "e2e-chunked" in model_name:
-        torchaudio.save(  # type: ignore
-            save_path,
-            pred.flatten().unsqueeze(0),
-            16000,
-            encoding="PCM_F",
-            bits_per_sample=32,
-        )
-    else:
-        torchaudio.save(  # type: ignore
-            save_path, pred, 16000, encoding="PCM_F", bits_per_sample=32
-        )
+    try:
+        if model_name == "transformer":
+            torch.save(pred, save_path)
+        elif "e2e-chunked" in model_name:
+            torchaudio.save(  # type: ignore
+                save_path,
+                pred.flatten().unsqueeze(0),
+                16000,
+                encoding="PCM_F",
+                bits_per_sample=32,
+            )
+        else:
+            torchaudio.save(  # type: ignore
+                save_path, pred, 16000, encoding="PCM_F", bits_per_sample=32
+            )
+    except Exception as e:
+        log.error(e)
 
 
 def get_sample_path_list(data_root: Path, ext: str = "mp3") -> List[Path]:
