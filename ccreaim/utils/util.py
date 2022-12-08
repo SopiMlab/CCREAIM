@@ -56,10 +56,12 @@ def chop_dataset(in_root: str, out_tar_file_path: str, ext: str, sample_length: 
                             sample_rate,
                             encoding="PCM_F",
                             bits_per_sample=32,
+                            format="wav",
                         )
+                        buffer.seek(0)  # go to the beginning for reading the buffer
                         out_info = tarfile.TarInfo(name=out_name)
                         out_info.size = buffer.getbuffer().nbytes
-                        out_tar.addfile(out_info, buffer)
+                        out_tar.addfile(tarinfo=out_info, fileobj=buffer)
                     except Exception as e:
                         log.error(e)
 
