@@ -132,6 +132,7 @@ class BaseConfig:
     resources: Resources
     hyper: HyperConfig
 
+
 @dataclass
 class LiveConfig:
     load_model_path: str
