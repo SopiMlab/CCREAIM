@@ -49,14 +49,16 @@ class Reparametrization(nn.Module):
         return z, mu, std
 
 
-def _create_vae(seq_length: int, latent_dim: int):
-    encoder = ae.Encoder(seq_length, latent_dim)
-    decoder = ae.Decoder(seq_length, latent_dim, encoder.output_lengths)
-    reparam = Reparametrization(encoder.output_lengths[-1], latent_dim)
+def _create_vae(hyper_cfg: HyperConfig) -> VAE:
+    encoder = ae.Encoder(hyper_cfg.seq_len, hyper_cfg.latent_dim)
+    decoder = ae.Decoder(
+        hyper_cfg.seq_len, hyper_cfg.latent_dim, encoder.output_lengths
+    )
+    reparam = Reparametrization(encoder.output_lengths[-1], hyper_cfg.latent_dim)
     return VAE(encoder, decoder, reparam)
 
 
-def _create_res_vae(hyper_cfg: HyperConfig):
+def _create_res_vae(hyper_cfg: HyperConfig) -> VAE:
     encoder = ae.get_res_encoder(hyper_cfg)
     decoder = ae.get_res_decoder(hyper_cfg)
     assert hyper_cfg.res_ae.levels == 1, "Res-VAE with multiple levels not supported"
@@ -65,10 +67,10 @@ def _create_res_vae(hyper_cfg: HyperConfig):
     return VAE(encoder, decoder, reparam)
 
 
-def get_vae(name: str, hyper_cfg: HyperConfig):
-    if name == "base":
-        return _create_vae(hyper_cfg.seq_len, hyper_cfg.latent_dim)
-    elif name == "res-vae":
+def get_vae(hyper_cfg: HyperConfig) -> VAE:
+    if hyper_cfg.model == "vae":
+        return _create_vae(hyper_cfg)
+    elif hyper_cfg.model == "res-vae":
         return _create_res_vae(hyper_cfg)
     else:
-        raise ValueError("Unknown autoencoder name: '{}'".format(name))
+        raise ValueError("Unknown autoencoder name: '{}'".format(hyper_cfg.model))

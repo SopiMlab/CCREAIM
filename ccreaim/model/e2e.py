@@ -19,40 +19,24 @@ class E2E(nn.Module):
         return dec
 
 
-def _create_e2e_ae(seq_length: int, num_seq: int, latent_dim: int):
-    encoder = ae.Encoder(seq_length, latent_dim)
-    decoder = ae.Decoder(seq_length, latent_dim, encoder.output_lengths)
+def _create_e2e_ae(hyper_cfg: HyperConfig) -> E2E:
+    encoder = ae.Encoder(hyper_cfg.seq_len, hyper_cfg.latent_dim)
+    decoder = ae.Decoder(
+        hyper_cfg.seq_len, hyper_cfg.latent_dim, encoder.output_lengths
+    )
     trf = transformer.Transformer(
-        dim_model=num_seq,
-        num_heads=8,
-        num_encoder_layers=1,
-        num_decoder_layers=1,
+        dim_model=hyper_cfg.latent_dim,
+        num_heads=hyper_cfg.latent_dim
+        // hyper_cfg.transformer.num_heads_latent_dimension_div,
+        num_encoder_layers=hyper_cfg.transformer.num_enc_layers,
+        num_decoder_layers=hyper_cfg.transformer.num_dec_layers,
         dropout_p=0.1,
     )
     return E2E(encoder, trf, decoder)
 
 
-def _create_e2e_vae(seq_length: int, num_seq: int, latent_dim: int):
-    encoder = ae.Encoder(seq_length, latent_dim)
-    decoder = ae.Decoder(seq_length, latent_dim, encoder.output_lengths)
-    trf = transformer.Transformer(
-        dim_model=num_seq,
-        num_heads=8,
-        num_encoder_layers=1,
-        num_decoder_layers=1,
-        dropout_p=0.1,
-    )
-    return E2E(encoder, trf, decoder)
-
-
-def get_e2e(name: str, hyper_cfg: HyperConfig):
-    if name == "base_ae":
-        return _create_e2e_ae(
-            hyper_cfg.seq_len, hyper_cfg.num_seq, hyper_cfg.latent_dim
-        )
-    elif name == "base_vae":
-        return _create_e2e_vae(
-            hyper_cfg.seq_len, hyper_cfg.num_seq, hyper_cfg.latent_dim
-        )
+def get_e2e(hyper_cfg: HyperConfig) -> E2E:
+    if hyper_cfg.model == "e2e":
+        return _create_e2e_ae(hyper_cfg)
     else:
-        raise ValueError("Unknown autoencoder name: '{}'".format(name))
+        raise ValueError("Unknown autoencoder name: '{}'".format(hyper_cfg.model))

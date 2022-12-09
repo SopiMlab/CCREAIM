@@ -64,7 +64,7 @@ class Transformer(nn.Module):
 
         # LAYERS
         self.positional_encoder = PositionalEncoding(
-            dim_model=dim_model, dropout_p=dropout_p, max_len=1000
+            dim_model=dim_model, dropout_p=dropout_p, max_len=10000
         )
         self.transformer = nn.Transformer(
             d_model=dim_model,
@@ -117,14 +117,15 @@ class Transformer(nn.Module):
         return mask
 
 
-def get_transformer(name: str, hyper_cfg: HyperConfig) -> Transformer:
-    if name == "base":
+def get_transformer(hyper_cfg: HyperConfig) -> Transformer:
+    if hyper_cfg.model == "transformer":
         return Transformer(
             dim_model=hyper_cfg.latent_dim,
-            num_heads=8,
-            num_encoder_layers=1,
-            num_decoder_layers=1,
+            num_heads=hyper_cfg.latent_dim
+            // hyper_cfg.transformer.num_heads_latent_dimension_div,
+            num_encoder_layers=hyper_cfg.transformer.num_enc_layers,
+            num_decoder_layers=hyper_cfg.transformer.num_dec_layers,
             dropout_p=0.1,
         )
     else:
-        raise ValueError(f"Transformer model not implemented: {name}")
+        raise ValueError(f"Transformer model not implemented: {hyper_cfg.model}")

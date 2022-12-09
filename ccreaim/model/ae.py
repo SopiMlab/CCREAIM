@@ -595,22 +595,22 @@ def get_res_decoder(hyper_cfg: HyperConfig) -> ResDecoder:
     )
 
 
-def _create_res_autoencoder(hyper_cfg: HyperConfig):
+def _create_res_autoencoder(hyper_cfg: HyperConfig) -> AutoEncoder:
     encoder = get_res_encoder(hyper_cfg)
     decoder = get_res_decoder(hyper_cfg)
     return AutoEncoder(encoder, decoder)
 
 
-def _create_autoencoder(seq_length: int, latent_dim: int):
-    encoder = Encoder(seq_length, latent_dim)
-    decoder = Decoder(seq_length, latent_dim, encoder.output_lengths)
+def _create_autoencoder(hyper_cfg: HyperConfig) -> AutoEncoder:
+    encoder = Encoder(hyper_cfg.seq_len, hyper_cfg.latent_dim)
+    decoder = Decoder(hyper_cfg.seq_len, hyper_cfg.latent_dim, encoder.output_lengths)
     return AutoEncoder(encoder, decoder)
 
 
-def get_autoencoder(name: str, hyper_cfg: HyperConfig):
-    if name == "base":
-        return _create_autoencoder(hyper_cfg.seq_len, hyper_cfg.latent_dim)
-    elif name == "res-ae":
+def get_autoencoder(hyper_cfg: HyperConfig) -> AutoEncoder:
+    if hyper_cfg.model == "ae":
+        return _create_autoencoder(hyper_cfg)
+    elif hyper_cfg.model == "res-ae":
         return _create_res_autoencoder(hyper_cfg)
     else:
-        raise ValueError("Unknown autoencoder name: '{}'".format(name))
+        raise ValueError("Unknown autoencoder name: '{}'".format(hyper_cfg.model))

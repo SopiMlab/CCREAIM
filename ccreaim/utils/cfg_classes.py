@@ -117,6 +117,7 @@ class HyperConfig:
     epochs: int
     batch_size: int
     learning_rate: float
+    pre_trained_model_path: Optional[str] = None
     kld_loss: Optional[KldLossConfig] = None
     spectral_loss: Optional[SpectralLossConfig] = None
     res_ae: Optional[ResAeConfig] = None

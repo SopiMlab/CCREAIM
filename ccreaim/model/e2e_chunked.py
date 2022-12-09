@@ -1,6 +1,8 @@
 import logging
+from typing import Union
 
 import torch
+from omegaconf import OmegaConf
 from torch import nn
 from torch.nn import functional as F
 
@@ -209,7 +211,7 @@ class E2EChunkedVQVAE(nn.Module):
         return dec
 
 
-def _create_e2e_chunked_ae(hyper_cfg: HyperConfig):
+def _create_e2e_chunked_ae(hyper_cfg: HyperConfig) -> E2EChunked:
     seq_len = hyper_cfg.seq_len
     latent_dim = hyper_cfg.latent_dim
     encoder = ae.Encoder(seq_len, latent_dim)
@@ -235,7 +237,7 @@ def _create_e2e_chunked_ae(hyper_cfg: HyperConfig):
     )
 
 
-def _create_e2e_chunked_res_ae(hyper_cfg: HyperConfig):
+def _create_e2e_chunked_res_ae(hyper_cfg: HyperConfig) -> E2EChunked:
     seq_len = hyper_cfg.seq_len
     latent_dim = hyper_cfg.latent_dim
     encoder = ae.get_res_encoder(hyper_cfg)
@@ -262,7 +264,7 @@ def _create_e2e_chunked_res_ae(hyper_cfg: HyperConfig):
     )
 
 
-def _create_e2e_chunked_res_vqvae(hyper_cfg: HyperConfig):
+def _create_e2e_chunked_res_vqvae(hyper_cfg: HyperConfig) -> E2EChunkedVQVAE:
     seq_len = hyper_cfg.seq_len
     latent_dim = hyper_cfg.latent_dim
     encoder = ae.get_res_encoder(hyper_cfg)
@@ -275,7 +277,91 @@ def _create_e2e_chunked_res_vqvae(hyper_cfg: HyperConfig):
         num_decoder_layers=hyper_cfg.transformer.num_dec_layers,
         dropout_p=0.1,
     )
-    vq = vqvae.VectorQuantizer(hyper_cfg.vqvae.num_embeddings, hyper_cfg.latent_dim)
+    vq = vqvae.VectorQuantizer(
+        hyper_cfg.vqvae.num_embeddings,
+        hyper_cfg.latent_dim,
+        hyper_cfg.vqvae.reset_patience,
+    )
+
+    if hyper_cfg.pre_trained_model_path is not None:
+        checkpoint = torch.load(hyper_cfg.pre_trained_model_path, map_location="cpu")
+        pretrained_state_dict = checkpoint["model_state_dict"]
+        hyper_cfg_schema = OmegaConf.structured(HyperConfig)
+        conf = OmegaConf.create(checkpoint["hyper_config"])
+        pretrained_hyper_cfg = OmegaConf.merge(hyper_cfg_schema, conf)
+
+        if (
+            hyper_cfg.latent_dim == pretrained_hyper_cfg.latent_dim
+            and hyper_cfg.seq_len == pretrained_hyper_cfg.seq_len
+            and hyper_cfg.res_ae.downs_t == pretrained_hyper_cfg.res_ae.downs_t
+            and hyper_cfg.res_ae.strides_t == pretrained_hyper_cfg.res_ae.strides_t
+            and hyper_cfg.res_ae.input_emb_width
+            == pretrained_hyper_cfg.res_ae.input_emb_width
+            and hyper_cfg.res_ae.block_width == pretrained_hyper_cfg.res_ae.block_width
+            and hyper_cfg.res_ae.block_depth == pretrained_hyper_cfg.res_ae.block_depth
+            and hyper_cfg.res_ae.block_m_conv
+            == pretrained_hyper_cfg.res_ae.block_m_conv
+            and hyper_cfg.res_ae.block_dilation_growth_rate
+            == pretrained_hyper_cfg.res_ae.block_dilation_growth_rate
+            and hyper_cfg.res_ae.block_dilation_cycle
+            == pretrained_hyper_cfg.res_ae.block_dilation_cycle
+            and hyper_cfg.vqvae.num_embeddings
+            == pretrained_hyper_cfg.vqvae.num_embeddings
+        ):
+            tmp_vq = vqvae.VQVAE(encoder, decoder, vq)
+            tmp_vq.load_state_dict(pretrained_state_dict)
+            encoder = tmp_vq.encoder
+            vq = tmp_vq.vq
+            decoder = tmp_vq.decoder
+        else:
+            raise ValueError(
+                f"Pre-trained config is not matching current config:\n"
+                "\t\t\t\tCurrent config\t---\tPre-trained config\n"
+                "latent_dim:\t\t\t\t"
+                f"{hyper_cfg.latent_dim}"
+                "\t---\t"
+                f"{pretrained_hyper_cfg.latent_dim}\n"
+                "seq_len:\t\t\t\t"
+                f"{hyper_cfg.seq_len}"
+                "\t---\t"
+                f"{pretrained_hyper_cfg.seq_len}\n"
+                "res_ae.downs_t:\t\t\t\t"
+                f"{hyper_cfg.res_ae.downs_t}"
+                "\t---\t"
+                f"{pretrained_hyper_cfg.res_ae.downs_t}\n"
+                "res_ae.strides_t:\t\t\t"
+                f"{hyper_cfg.res_ae.strides_t}"
+                "\t---\t"
+                f"{pretrained_hyper_cfg.res_ae.strides_t}\n"
+                "res_ae.input_emb_width:\t\t\t"
+                f"{hyper_cfg.res_ae.input_emb_width}"
+                "\t---\t"
+                f"{pretrained_hyper_cfg.res_ae.input_emb_width}\n"
+                "res_ae.block_width:\t\t\t"
+                f"{hyper_cfg.res_ae.block_width}"
+                "\t---\t"
+                f"{pretrained_hyper_cfg.res_ae.block_width}\n"
+                "res_ae.block_depth:\t\t\t"
+                f"{hyper_cfg.res_ae.block_depth}"
+                "\t---\t"
+                f"{pretrained_hyper_cfg.res_ae.block_depth}\n"
+                "res_ae.block_m_conv:\t\t\t"
+                f"{hyper_cfg.res_ae.block_m_conv}"
+                "\t---\t"
+                f"{pretrained_hyper_cfg.res_ae.block_m_conv}\n"
+                "res_ae.block_dilation_growth_rate:\t"
+                f"{hyper_cfg.res_ae.block_dilation_growth_rate}"
+                "\t---\t"
+                f"{pretrained_hyper_cfg.res_ae.block_dilation_growth_rate}\n"
+                "res_ae.block_dilation_cycle:\t\t"
+                f"{hyper_cfg.res_ae.block_dilation_cycle}"
+                "\t---\t"
+                f"{pretrained_hyper_cfg.res_ae.block_dilation_cycle}\n"
+                "vqvae.num_embeddings:\t\t\t"
+                f"{hyper_cfg.vqvae.num_embeddings}"
+                "\t---\t"
+                f"{pretrained_hyper_cfg.vqvae.num_embeddings}\n"
+            )
 
     return E2EChunkedVQVAE(
         encoder,
@@ -291,12 +377,12 @@ def _create_e2e_chunked_res_vqvae(hyper_cfg: HyperConfig):
     )
 
 
-def get_e2e_chunked(name: str, hyper_cfg: HyperConfig):
-    if name == "base_ae":
+def get_e2e_chunked(hyper_cfg: HyperConfig) -> Union[E2EChunked, E2EChunkedVQVAE]:
+    if hyper_cfg.model == "e2e-chunked":
         return _create_e2e_chunked_ae(hyper_cfg)
-    elif name == "base_res-ae":
+    elif hyper_cfg.model == "be2e-chunked_res-ae":
         return _create_e2e_chunked_res_ae(hyper_cfg)
-    elif name == "base_res-vqvae":
+    elif hyper_cfg.model == "e2e-chunked_res-vqvae":
         return _create_e2e_chunked_res_vqvae(hyper_cfg)
     else:
-        raise ValueError("Unknown autoencoder name: '{}'".format(name))
+        raise ValueError("Unknown autoencoder name: '{}'".format(hyper_cfg.model))

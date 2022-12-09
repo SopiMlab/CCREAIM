@@ -73,14 +73,15 @@ class VectorQuantizer(nn.Module):
         reset_num = torch.count_nonzero(reset_mask)
         if reset_num > 0:
             random_ids = torch.randperm(num_latent_vectors)[:reset_num]
-            self.embedding.weight.data[reset_mask] = flat_latents[random_ids]
+            with torch.no_grad():
+                self.embedding.weight.data[reset_mask] = flat_latents[random_ids]
             self.usage[reset_mask] = 1.0 / self.K
 
     def lookup(self, token_ids: torch.Tensor) -> torch.Tensor:
         return self.embedding(token_ids)
 
 
-def _create_vqvae(hyper_cfg: HyperConfig):
+def _create_vqvae(hyper_cfg: HyperConfig) -> VQVAE:
     encoder = ae.Encoder(hyper_cfg.seq_len, hyper_cfg.latent_dim)
     decoder = ae.Decoder(
         hyper_cfg.seq_len, hyper_cfg.latent_dim, encoder.output_lengths
@@ -93,7 +94,7 @@ def _create_vqvae(hyper_cfg: HyperConfig):
     return VQVAE(encoder, decoder, reparam)
 
 
-def _create_res_vqvae(hyper_cfg: HyperConfig):
+def _create_res_vqvae(hyper_cfg: HyperConfig) -> VQVAE:
     encoder = ae.get_res_encoder(hyper_cfg)
     decoder = ae.get_res_decoder(hyper_cfg)
     reparam = VectorQuantizer(
@@ -104,10 +105,10 @@ def _create_res_vqvae(hyper_cfg: HyperConfig):
     return VQVAE(encoder, decoder, reparam)
 
 
-def get_vqvae(name: str, hyper_cfg: HyperConfig):
-    if name == "base":
+def get_vqvae(hyper_cfg: HyperConfig) -> VQVAE:
+    if hyper_cfg.model == "vq-vae":
         return _create_vqvae(hyper_cfg)
-    elif name == "res-vqvae":
+    elif hyper_cfg.model == "res-vqvae":
         return _create_res_vqvae(hyper_cfg)
     else:
-        raise ValueError("Unknown autoencoder name: '{}'".format(name))
+        raise ValueError("Unknown autoencoder name: '{}'".format(hyper_cfg.model))

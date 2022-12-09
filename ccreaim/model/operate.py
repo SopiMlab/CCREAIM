@@ -150,27 +150,27 @@ def step(
 def get_model_init_function(hyper_cfg: HyperConfig):
     # Model init function mapping
     if hyper_cfg.model == "ae":
-        get_model = lambda: ae.get_autoencoder("base", hyper_cfg)
+        get_model = lambda: ae.get_autoencoder(hyper_cfg)
     elif hyper_cfg.model == "res-ae":
-        get_model = lambda: ae.get_autoencoder("res-ae", hyper_cfg)
+        get_model = lambda: ae.get_autoencoder(hyper_cfg)
     elif hyper_cfg.model == "vae":
-        get_model = lambda: vae.get_vae("base", hyper_cfg)
+        get_model = lambda: vae.get_vae(hyper_cfg)
     elif hyper_cfg.model == "res-vae":
-        get_model = lambda: vae.get_vae("res-vae", hyper_cfg)
+        get_model = lambda: vae.get_vae(hyper_cfg)
     elif hyper_cfg.model == "vq-vae":
-        get_model = lambda: vqvae.get_vqvae("base", hyper_cfg)
+        get_model = lambda: vqvae.get_vqvae(hyper_cfg)
     elif hyper_cfg.model == "res-vq-vae":
-        get_model = lambda: vqvae.get_vqvae("res-vqvae", hyper_cfg)
+        get_model = lambda: vqvae.get_vqvae(hyper_cfg)
     elif hyper_cfg.model == "transformer":
-        get_model = lambda: transformer.get_transformer("base", hyper_cfg)
+        get_model = lambda: transformer.get_transformer(hyper_cfg)
     elif hyper_cfg.model == "e2e":
-        get_model = lambda: e2e.get_e2e("base_ae", hyper_cfg)
+        get_model = lambda: e2e.get_e2e(hyper_cfg)
     elif hyper_cfg.model == "e2e-chunked":
-        get_model = lambda: e2e_chunked.get_e2e_chunked("base_ae", hyper_cfg)
+        get_model = lambda: e2e_chunked.get_e2e_chunked(hyper_cfg)
     elif hyper_cfg.model == "e2e-chunked_res-ae":
-        get_model = lambda: e2e_chunked.get_e2e_chunked("base_res-ae", hyper_cfg)
+        get_model = lambda: e2e_chunked.get_e2e_chunked(hyper_cfg)
     elif hyper_cfg.model == "e2e-chunked_res-vqvae":
-        get_model = lambda: e2e_chunked.get_e2e_chunked("base_res-vqvae", hyper_cfg)
+        get_model = lambda: e2e_chunked.get_e2e_chunked(hyper_cfg)
     else:
         raise ValueError(f"Model type {hyper_cfg.model} is not defined!")
     return get_model
