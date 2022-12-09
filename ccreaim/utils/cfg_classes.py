@@ -132,3 +132,13 @@ class BaseConfig:
     data: DataConfig
     resources: Resources
     hyper: HyperConfig
+
+
+@dataclass
+class LiveConfig:
+    load_model_path: str
+    input_device: str
+    output_device: str
+    sample_rate: int
+    segment_length: int
+    buffer_chunk_size: int
