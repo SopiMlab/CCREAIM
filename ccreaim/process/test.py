@@ -48,13 +48,17 @@ def test(
             if cfg.logging.save_pred:
                 save_root = Path(cfg.logging.pred_output)
                 save_root.mkdir(exist_ok=True)
-                if cfg.logging.save_one_per_batch and batchnum % 100000 == 0:
+                n_predictions = 20
+                if (
+                    cfg.logging.save_one_per_batch
+                    and batchnum % (len(dataloader) / n_predictions) == 0
+                ):
                     p, n = random.choice(list(zip(pred, batch[1])))
                     save_path = save_root / Path(n).name
                     util.save_model_prediction(
                         cfg.hyper.model, p.clone().cpu(), save_path
                     )
-                else:
+                elif not cfg.logging.save_one_per_batch:
                     for p, n in zip(pred, batch[1]):
                         save_path = save_root / Path(n).name
                         util.save_model_prediction(
