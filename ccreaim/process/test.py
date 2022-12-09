@@ -51,7 +51,7 @@ def test(
                 n_predictions = 20
                 if (
                     cfg.logging.save_one_per_batch
-                    and batchnum % (len(dataloader) / n_predictions) == 0
+                    and batchnum % (len(dataloader) // n_predictions) == 0
                 ):
                     p, n = random.choice(list(zip(pred, batch[1])))
                     save_path = save_root / Path(n).name
