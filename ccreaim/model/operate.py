@@ -1,3 +1,4 @@
+import logging
 from typing import Union
 
 import torch
@@ -6,6 +7,8 @@ from torch.nn import functional as F
 from ..utils import util
 from ..utils.cfg_classes import HyperConfig
 from . import ae, e2e, e2e_chunked, transformer, vae, vqvae
+
+log = logging.getLogger(__name__)
 
 
 def step(
@@ -54,8 +57,14 @@ def step(
         tgt_pad_mask = pad_mask[:, 1:]
 
         # Compute the VQ Losses
-        commitment_loss = F.mse_loss(quantized_latents.detach(), latents)
-        embedding_loss = F.mse_loss(quantized_latents, latents.detach())
+        if not hyper_cfg.freeze_pre_trained:
+            commitment_loss = F.mse_loss(quantized_latents.detach(), latents)
+            embedding_loss = F.mse_loss(quantized_latents, latents.detach())
+        else:
+            commitment_loss = torch.tensor(0)
+            embedding_loss = torch.tensor(0)
+            model.vq.embedding.grad = 0
+
         vq_loss = hyper_cfg.vqvae.beta * commitment_loss + embedding_loss
 
         mse = F.mse_loss(pred, tgt, reduction="none")

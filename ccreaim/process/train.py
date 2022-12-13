@@ -16,12 +16,11 @@ log = logging.getLogger(__name__)
 def train(
     model: torch.nn.Module,
     dataloader: torch.utils.data.DataLoader,
-    optimizer,  # torch optimizer
     device: torch.device,
     cfg: cfg_classes.BaseConfig,
     fold: int = 0,
 ):
-
+    optimizer = torch.optim.Adam(model.parameters(), cfg.hyper.learning_rate)
     if cfg.logging.wandb:
         wandb_group_name = f"{cfg.hyper.model}-{cfg.logging.exp_name}"
         wandb_exp_name = f"{cfg.hyper.model}-{cfg.logging.exp_name}-train-seed:{str(cfg.hyper.seed)}-id:{cfg.logging.run_id}"

@@ -25,7 +25,6 @@ def cross_validation(
         for fold, (tr_idx, val_idx) in enumerate(kfold.split(dataset), start=1):
             model = get_model()
             model.to(device)
-            optimizer = torch.optim.Adam(model.parameters(), cfg.hyper.learning_rate)
             train_dataloader = torch.utils.data.DataLoader(
                 dataset,
                 batch_size=cfg.hyper.batch_size,
@@ -39,7 +38,7 @@ def cross_validation(
                 sampler=torch.utils.data.SubsetRandomSampler(val_idx),
             )
             log.info(f"FOLD {fold}/{cfg.process.cross_val_k} TRAINING STARTED")
-            train.train(model, train_dataloader, optimizer, device, cfg, fold)
+            train.train(model, train_dataloader, device, cfg, fold)
 
             log.info(f"FOLD {fold}/{cfg.process.cross_val_k} VALIDATION STARTED")
             test.test(model, test_loader, device, cfg, fold)
@@ -47,7 +46,6 @@ def cross_validation(
     elif cfg.process.cross_val_k == 1:
         model = get_model()
         model.to(device)
-        optimizer = torch.optim.Adam(model.parameters(), cfg.hyper.learning_rate)
         dataloader = torch.utils.data.DataLoader(
             dataset,
             batch_size=cfg.hyper.batch_size,
@@ -55,7 +53,7 @@ def cross_validation(
             num_workers=cfg.resources.num_workers,
         )
         log.info(f"TRAINING STARTED")
-        train.train(model, dataloader, optimizer, device, cfg)
+        train.train(model, dataloader, device, cfg)
 
         log.info(f"VALIDATION STARTED")
         test.test(model, dataloader, device, cfg)
@@ -63,11 +61,11 @@ def cross_validation(
     else:
         model = get_model()
         model.to(device)
-        optimizer = torch.optim.Adam(model.parameters(), cfg.hyper.learning_rate)
         dataloader = torch.utils.data.DataLoader(
             dataset,
             batch_size=cfg.hyper.batch_size,
             shuffle=cfg.data.shuffle,
             num_workers=cfg.resources.num_workers,
         )
-        train.train(model, dataloader, optimizer, device, cfg)
+        log.info(f"TRAINING STARTED")
+        train.train(model, dataloader, device, cfg)

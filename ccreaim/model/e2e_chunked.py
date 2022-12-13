@@ -1,3 +1,4 @@
+import itertools
 import logging
 from typing import Union
 
@@ -8,8 +9,6 @@ from torch.nn import functional as F
 
 from ..utils.cfg_classes import HyperConfig
 from . import ae, transformer, vae, vqvae
-
-log = logging.getLogger(__name__)
 
 
 class E2EChunked(nn.Module):
@@ -313,6 +312,10 @@ def _create_e2e_chunked_res_vqvae(hyper_cfg: HyperConfig) -> E2EChunkedVQVAE:
             encoder = tmp_vq.encoder
             vq = tmp_vq.vq
             decoder = tmp_vq.decoder
+            if hyper_cfg.freeze_pre_trained:
+                encoder.requires_grad_(False)
+                # vq is frozen in operate by emedding.grad = 0
+                decoder.requires_grad_(False)
         else:
             raise ValueError(
                 f"Pre-trained config is not matching current config:\n"

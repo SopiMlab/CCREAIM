@@ -76,6 +76,7 @@ hyper:
   epochs: ???
   batch_size: ???
   learning_rate: ???
+  freeze_pre_trained: false
   pre_trained_model_path: null
   transformer: null
     # num_heads_latent_dimension_div: ???
