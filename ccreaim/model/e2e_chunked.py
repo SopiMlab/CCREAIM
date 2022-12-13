@@ -207,7 +207,7 @@ class E2EChunkedVQVAE(nn.Module):
             enc = enc.flatten(2, -1)
 
         # VQ
-        quantized_enc = self.vq(enc)
+        quantized_enc = self.vq(enc.transpose(-1, -2)).transpose(-1, -2)
 
         enc_src = quantized_enc
         if feed_in_tokens == 0:
@@ -223,9 +223,7 @@ class E2EChunkedVQVAE(nn.Module):
             z_soft = F.softmax(self.trf_out_to_tokens(z_comb))
             z_ids = z_soft.argmax(-1)
             z_quant = self.vq.lookup(z_ids.flatten(0, 1))
-            z_quant = z_quant.transpose(-1, -2)
-
-            tgt = torch.cat([tgt, z_quant], dim=1)
+            tgt = torch.cat([tgt, z_quant.unsqueeze(0)], dim=1)
 
         z_comb = tgt[:, feed_in_tokens:, :].view(
             -1, gen_chunks, self.enc_out_length, self.latent_dim
