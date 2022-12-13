@@ -10,7 +10,7 @@ data:
   data_tar: /scratch/other/sopi/CCREAIM/datasets/test/out/chopped_65536.tar
 
 hyper:
-  model: res-vq-vae
+  model: res-vqvae
   seed: 0
   latent_dim: 64 #1,2,4,8
   seq_len: 65536
