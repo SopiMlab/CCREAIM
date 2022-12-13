@@ -21,7 +21,6 @@ class E2EChunked(nn.Module):
         latent_dim: int,
         seq_num: int,
         enc_out_length: int,
-        seq_cat: bool,
     ):
         super().__init__()
         self.encoder = encoder
@@ -31,18 +30,15 @@ class E2EChunked(nn.Module):
         self.latent_dim = latent_dim
         self.seq_num = seq_num
         self.enc_out_length = enc_out_length
-        self.seq_cat = seq_cat
-        self.shift_amount = self.enc_out_length if self.seq_cat else 1
+        self.shift_amount = self.enc_out_length
 
     def forward(self, data: torch.Tensor, key_pad_mask: torch.Tensor) -> torch.Tensor:
         data = data.flatten(0, 1).unsqueeze(1)
         enc_batch = self.encoder(data).transpose(-1, -2)
         enc = enc_batch.view(-1, self.seq_num, self.enc_out_length, self.latent_dim)
-        if self.seq_cat:
-            enc = enc.flatten(1, 2)  # merge into sequence of vectors
-            key_pad_mask = key_pad_mask.repeat_interleave(self.enc_out_length, dim=-1)
-        else:
-            enc = enc.flatten(2, -1)  # merge into one vector
+        enc = enc.flatten(1, 2)  # merge into sequence of vectors
+        key_pad_mask = key_pad_mask.repeat_interleave(self.enc_out_length, dim=-1)
+
         # shift by one or by self.enc_out_length
         enc_src = enc[:, : -self.shift_amount, :]
         enc_tgt = enc[:, self.shift_amount :, :]
@@ -117,7 +113,6 @@ class E2EChunkedVQVAE(nn.Module):
         latent_dim: int,
         seq_num: int,
         enc_out_length: int,
-        seq_cat: bool,
         num_tokens: int,
     ):
         super().__init__()
@@ -129,8 +124,7 @@ class E2EChunkedVQVAE(nn.Module):
         self.latent_dim = latent_dim
         self.seq_num = seq_num
         self.enc_out_length = enc_out_length
-        self.seq_cat = seq_cat
-        self.shift_amount = self.enc_out_length if self.seq_cat else 1
+        self.shift_amount = self.enc_out_length
         self.trf_out_to_tokens = nn.Linear(latent_dim, num_tokens)
 
     def forward(
@@ -149,11 +143,9 @@ class E2EChunkedVQVAE(nn.Module):
         enc = quantized_latents_res.view(
             -1, self.seq_num, self.enc_out_length, self.latent_dim
         )
-        if self.seq_cat:
-            enc = enc.flatten(1, 2)  # merge into sequence of vectors
-            key_pad_mask = key_pad_mask.repeat_interleave(self.enc_out_length, dim=-1)
-        else:
-            enc = enc.flatten(2, -1)  # merge into one vector
+        enc = enc.flatten(1, 2)  # merge into sequence of vectors
+        key_pad_mask = key_pad_mask.repeat_interleave(self.enc_out_length, dim=-1)
+
         # shift by one or by self.enc_out_length
         enc_src = quantized_latents_res[:, : -self.shift_amount, :]
         enc_tgt = quantized_latents_res[:, self.shift_amount :, :]
@@ -258,7 +250,6 @@ def _create_e2e_chunked_ae(hyper_cfg: HyperConfig) -> E2EChunked:
         latent_dim,
         hyper_cfg.num_seq,
         encoder.output_lengths[-1],
-        hyper_cfg.seq_cat,
     )
 
 
@@ -285,7 +276,6 @@ def _create_e2e_chunked_res_ae(hyper_cfg: HyperConfig) -> E2EChunked:
         latent_dim,
         hyper_cfg.num_seq,
         encoder_output_length,
-        hyper_cfg.seq_cat,
     )
 
 
@@ -401,7 +391,6 @@ def _create_e2e_chunked_res_vqvae(hyper_cfg: HyperConfig) -> E2EChunkedVQVAE:
         latent_dim,
         hyper_cfg.num_seq,
         encoder_output_length,
-        hyper_cfg.seq_cat,
         hyper_cfg.vqvae.num_embeddings,
     )
 
