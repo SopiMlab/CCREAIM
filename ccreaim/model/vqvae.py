@@ -70,9 +70,15 @@ class VectorQuantizer(nn.Module):
             counts[i] / num_latent_vectors
         )
         reset_mask = self.usage < (1.0 / (self.K * self.reset_patience))
-        reset_num = torch.count_nonzero(reset_mask)
+        reset_num = torch.count_nonzero(reset_mask).item()
         if reset_num > 0:
-            random_ids = torch.randperm(num_latent_vectors)[:reset_num]
+            if reset_num <= num_latent_vectors:
+                random_ids = torch.randperm(num_latent_vectors)
+                random_ids = random_ids[:reset_num]
+            else:
+                random_ids = torch.randint(
+                    low=0, high=num_latent_vectors, size=(reset_num,)
+                )
             with torch.no_grad():
                 self.embedding.weight.data[reset_mask] = flat_latents[random_ids]
             self.usage[reset_mask] = 1.0 / self.K
