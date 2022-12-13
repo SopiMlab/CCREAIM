@@ -63,36 +63,45 @@ class E2EChunked(nn.Module):
         return dec
 
     def generate(
-        self, data: torch.Tensor, in_len: int, feed_in_len: int, gen_len: int
+        self, data: torch.Tensor, in_chunks: int, feed_in_tokens: int, gen_chunks: int
     ) -> torch.Tensor:
+        """Generate audio from an impot context
+
+        Args:
+            data (torch.Tensor): The input context to the generated audio
+            in_chunks (int): The number of chunks in the input context
+            feed_in_len (int): The number of 'tokens' to feed into the transformer decoder
+            gen_chunks (int): The number of chunks generated
+
+        Returns:
+            torch.Tensor: The generated audio
+        """
         data = data.flatten(0, 1).unsqueeze(1)
         enc_batch = self.encoder(data).transpose(-1, -2)
-        enc = enc_batch.view(-1, in_len, self.enc_out_length, self.latent_dim)
+        enc = enc_batch.view(-1, in_chunks, self.enc_out_length, self.latent_dim)
         if self.seq_cat:
             enc = enc.flatten(1, 2)  # merge into sequence of vectors
         else:
             enc = enc.flatten(2, -1)
 
         enc_src = enc
-        if feed_in_len == 0:
+        if feed_in_tokens == 0:
             tgt = torch.zeros_like(enc_src[:, 0:1], device=enc_src.device)
         else:
-            tgt = enc_src[:, 0 : feed_in_len * self.enc_out_length]
+            tgt = enc_src[:, 0:feed_in_tokens]
 
-        for i in range(gen_len * self.enc_out_length):
+        for i in range(gen_chunks * self.enc_out_length):
             tgt_mask = self.trf.get_tgt_mask(tgt.size(1))
             tgt_mask = tgt_mask.to(tgt.device)
             trf_pred = self.trf(enc_src, tgt, tgt_mask=tgt_mask)
             tgt = torch.cat([tgt, trf_pred[:, -1:, :]], dim=1)
-
-        z_comb = tgt[:, feed_in_len:, :].view(
-            -1, gen_len, self.enc_out_length, self.latent_dim
+        z_comb = tgt[:, feed_in_tokens:, :].view(
+            -1, gen_chunks, self.enc_out_length, self.latent_dim
         )
-        # z_comb = tgt.view(-1, gen_len + feed_in_len, self.enc_out_length, self.latent_dim)
         z_comb = z_comb.flatten(0, 1).transpose(-1, -2)
         dec = self.decoder(z_comb)
         dec = dec.squeeze()
-        dec = dec.view(-1, gen_len + feed_in_len, self.seq_length)
+        dec = dec.view(-1, gen_chunks, self.seq_length)
 
         return dec
 
@@ -176,36 +185,55 @@ class E2EChunkedVQVAE(nn.Module):
         )
 
     def generate(
-        self, data: torch.Tensor, in_len: int, feed_in_len: int, gen_len: int
+        self, data: torch.Tensor, in_chunks: int, feed_in_tokens: int, gen_chunks: int
     ) -> torch.Tensor:
+        """Generate audio from an impot context
+
+        Args:
+            data (torch.Tensor): The input context to the generated audio
+            in_chunks (int): The number of chunks in the input context
+            feed_in_len (int): The number of 'tokens' to feed into the transformer decoder
+            gen_chunks (int): The number of chunks generated
+
+        Returns:
+            torch.Tensor: The generated audio
+        """
         data = data.flatten(0, 1).unsqueeze(1)
         enc_batch = self.encoder(data).transpose(-1, -2)
-        enc = enc_batch.view(-1, in_len, self.enc_out_length, self.latent_dim)
+        enc = enc_batch.view(-1, in_chunks, self.enc_out_length, self.latent_dim)
         if self.seq_cat:
             enc = enc.flatten(1, 2)  # merge into sequence of vectors
         else:
             enc = enc.flatten(2, -1)
 
-        enc_src = enc
-        if feed_in_len == 0:
+        # VQ
+        quantized_enc = self.vq(enc)
+
+        enc_src = quantized_enc
+        if feed_in_tokens == 0:
             tgt = torch.zeros_like(enc_src[:, 0:1], device=enc_src.device)
         else:
-            tgt = enc_src[:, 0 : feed_in_len * self.enc_out_length]
+            tgt = enc_src[:, 0:feed_in_tokens]
 
-        for i in range(gen_len * self.enc_out_length):
+        for i in range(gen_chunks * self.enc_out_length):
             tgt_mask = self.trf.get_tgt_mask(tgt.size(1))
             tgt_mask = tgt_mask.to(tgt.device)
             trf_pred = self.trf(enc_src, tgt, tgt_mask=tgt_mask)
-            tgt = torch.cat([tgt, trf_pred[:, -1:, :]], dim=1)
+            z_comb = trf_pred[:, -1:, :]
+            z_soft = F.softmax(self.trf_out_to_tokens(z_comb))
+            z_ids = z_soft.argmax(-1)
+            z_quant = self.vq.lookup(z_ids.flatten(0, 1))
+            z_quant = z_quant.transpose(-1, -2)
 
-        z_comb = tgt[:, feed_in_len:, :].view(
-            -1, gen_len, self.enc_out_length, self.latent_dim
+            tgt = torch.cat([tgt, z_quant], dim=1)
+
+        z_comb = tgt[:, feed_in_tokens:, :].view(
+            -1, gen_chunks, self.enc_out_length, self.latent_dim
         )
-        # z_comb = tgt.view(-1, gen_len + feed_in_len, self.enc_out_length, self.latent_dim)
         z_comb = z_comb.flatten(0, 1).transpose(-1, -2)
         dec = self.decoder(z_comb)
         dec = dec.squeeze()
-        dec = dec.view(-1, gen_len + feed_in_len, self.seq_length)
+        dec = dec.view(-1, gen_chunks, self.seq_length)
 
         return dec
 
@@ -383,7 +411,7 @@ def _create_e2e_chunked_res_vqvae(hyper_cfg: HyperConfig) -> E2EChunkedVQVAE:
 def get_e2e_chunked(hyper_cfg: HyperConfig) -> Union[E2EChunked, E2EChunkedVQVAE]:
     if hyper_cfg.model == "e2e-chunked":
         return _create_e2e_chunked_ae(hyper_cfg)
-    elif hyper_cfg.model == "be2e-chunked_res-ae":
+    elif hyper_cfg.model == "e2e-chunked_res-ae":
         return _create_e2e_chunked_res_ae(hyper_cfg)
     elif hyper_cfg.model == "e2e-chunked_res-vqvae":
         return _create_e2e_chunked_res_vqvae(hyper_cfg)
