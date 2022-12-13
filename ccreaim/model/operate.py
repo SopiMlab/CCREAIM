@@ -168,7 +168,7 @@ def get_model_init_function(hyper_cfg: HyperConfig):
         get_model = lambda: vae.get_vae(hyper_cfg)
     elif hyper_cfg.model == "vq-vae":
         get_model = lambda: vqvae.get_vqvae(hyper_cfg)
-    elif hyper_cfg.model == "res-vq-vae":
+    elif hyper_cfg.model == "res-vqvae":
         get_model = lambda: vqvae.get_vqvae(hyper_cfg)
     elif hyper_cfg.model == "transformer":
         get_model = lambda: transformer.get_transformer(hyper_cfg)
