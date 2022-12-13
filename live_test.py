@@ -35,7 +35,7 @@ def process(q1, q2, model, segment_len, seq_len, device):
     buffer_tensor = torch.zeros(max(2 * segment_len, 2 * seq_len))
 
     # This for-loop doesn't make sense here if segment_len < seq_len
-    with torch.no_grad():
+    with torch.inference_mode():
         for i in range(NUM_ITER):
             # Fill the buffer until there's enough for the model's forward call
             while cur_len < seq_len:
