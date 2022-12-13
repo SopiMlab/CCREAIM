@@ -114,15 +114,15 @@ def step(
         commitment_loss = F.mse_loss(quantized_latents.detach(), latents)
         embedding_loss = F.mse_loss(quantized_latents, latents.detach())
 
-        vq_loss = commitment_loss * hyper_cfg.vqvae.beta + embedding_loss
+        vq_loss = hyper_cfg.vqvae.beta * commitment_loss + embedding_loss
 
         spec_weight = hyper_cfg.spectral_loss.weight
         multi_spec = util.multispectral_loss(seq, pred, hyper_cfg.spectral_loss)
         multi_spec = multi_spec.mean()
         info.update(
             {
-                "train/commitment_loss": commitment_loss.item(),
-                "train/embedding_loss": hyper_cfg.vqvae.beta * embedding_loss.item(),
+                "train/commitment_loss": hyper_cfg.vqvae.beta * commitment_loss.item(),
+                "train/embedding_loss": embedding_loss.item(),
                 "train/vq_loss": vq_loss.item(),
                 "train/loss_mse": float(mse.item()),
                 "train/loss_spectral": float(spec_weight * multi_spec.item()),
