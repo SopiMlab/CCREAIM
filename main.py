@@ -64,7 +64,9 @@ def main(cfg: cfg_classes.BaseConfig):
         data = dataset.FeatureDataset(tmp_data_root)
     elif "e2e-chunked" in cfg.hyper.model:
         # Chunked sound dataset
-        data = dataset.ChunkedAudioDataset(tmp_data_root, cfg.hyper.seq_len, seq_num=16)
+        data = dataset.ChunkedAudioDataset(
+            tmp_data_root, cfg.hyper.seq_len, seq_num=cfg.hyper.num_seq
+        )
     else:
         # Sound dataset
         data = dataset.AudioDataset(tmp_data_root, cfg.hyper.seq_len)

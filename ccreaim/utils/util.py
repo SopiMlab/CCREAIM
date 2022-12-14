@@ -27,11 +27,14 @@ def chop_sample(sample: torch.Tensor, sample_length: int) -> List[torch.Tensor]:
     assert len(sample.size()) == 1, "Sample is not 1 dimensional" + str(sample.size())
     chopped_samples_list: List[torch.Tensor] = []
     n_chops = len(sample) // sample_length
-    for s in range(n_chops - 1):
+    for s in range(n_chops):
         chopped_samples_list.append(sample[s * sample_length : (s + 1) * sample_length])
     remainder = sample[n_chops * sample_length :]
     if remainder.size(0) > 0:
         chopped_samples_list.append(remainder)
+    assert sum([len(chopped_sample) for chopped_sample in chopped_samples_list]) == len(
+        sample
+    ), f"Chopping did not maintain total sample length ({len(sample)})."
     return chopped_samples_list
 
 
