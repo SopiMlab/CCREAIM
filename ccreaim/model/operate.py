@@ -26,63 +26,95 @@ def step(
         tgt_mask = model.get_tgt_mask(tgt.size(1))
         tgt_mask = tgt_mask.to(device)
         pred = model(src, tgt, tgt_mask)
+
         loss = F.mse_loss(pred, tgt)
+
     elif isinstance(model, e2e_chunked.E2EChunked):
         seq, _, pad_mask = batch
         seq = seq.to(device)
         pad_mask = pad_mask.to(device)
-        pred = model(seq, pad_mask)
-        tgt = seq[:, 1:, :]
-        tgt_pad_mask = pad_mask[:, 1:]
-        mse = F.mse_loss(pred, tgt, reduction="none")
-        mse[tgt_pad_mask] = 0
+        pred, enc_out, trf_out = model(seq, pad_mask)
+        mse = F.mse_loss(pred, seq, reduction="none")
+        mse[pad_mask] = 0
         mse = mse.mean()
-        spec_weight = hyper_cfg.spectral_loss.weight
-        multi_spec = util.multispectral_loss(tgt, pred, hyper_cfg.spectral_loss)
-        multi_spec[tgt_pad_mask] = 0
+        trf_auto_mse = torch.tensor(0)
+        if hyper_cfg.transformer.autoregressive_loss_weight:
+            info.update(
+                {
+                    "train/loss_transformer_auto_mse": hyper_cfg.transformer.autoregressive_loss_weight
+                    * float(trf_auto_mse.item())
+                }
+            )
+            trf_auto_mse = F.mse_loss(enc_out, trf_out, reduction="none")
+            trf_auto_mse[pad_mask] = 0
+            trf_auto_mse = trf_auto_mse.mean()
+        multi_spec = util.multispectral_loss(seq, pred, hyper_cfg.spectral_loss)
+        multi_spec[pad_mask] = 0
         multi_spec = multi_spec.mean()
         info.update(
             {
                 "train/loss_mse": float(mse.item()),
-                "train/loss_multi_spectral": spec_weight * multi_spec.item(),
+                "train/loss_multi_spectral": hyper_cfg.spectral_loss.weight
+                * multi_spec.item(),
             }
         )
-        loss = mse + spec_weight * multi_spec
+
+        loss = (
+            mse
+            + hyper_cfg.spectral_loss.weight * multi_spec
+            + hyper_cfg.transformer.autoregressive_loss_weight * trf_auto_mse
+        )
+
     elif isinstance(model, e2e_chunked.E2EChunkedVQVAE):
         seq, _, pad_mask = batch
         seq = seq.to(device)
         pad_mask = pad_mask.to(device)
-        pred, latents, quantized_latents = model(seq, pad_mask)
-        tgt = seq[:, 1:, :]
-        tgt_pad_mask = pad_mask[:, 1:]
+        pred, enc_out, trf_out, vq_out = model(seq, pad_mask)
 
         # Compute the VQ Losses
         if not hyper_cfg.freeze_pre_trained:
-            commitment_loss = F.mse_loss(quantized_latents.detach(), latents)
-            embedding_loss = F.mse_loss(quantized_latents, latents.detach())
+            commitment_loss = F.mse_loss(vq_out.detach(), enc_out)
+            embedding_loss = F.mse_loss(vq_out, enc_out.detach())
         else:
             commitment_loss = torch.tensor(0)
             embedding_loss = torch.tensor(0)
             model.vq.embedding.grad = 0
 
         vq_loss = hyper_cfg.vqvae.beta * commitment_loss + embedding_loss
-
-        mse = F.mse_loss(pred, tgt, reduction="none")
-        mse[tgt_pad_mask] = 0
+        mse = F.mse_loss(pred, seq, reduction="none")
+        mse[pad_mask] = 0
         mse = mse.mean()
-        spec_weight = hyper_cfg.spectral_loss.weight
-        multi_spec = util.multispectral_loss(tgt, pred, hyper_cfg.spectral_loss)
-        multi_spec[tgt_pad_mask] = 0
+        trf_auto_mse = torch.tensor(0)
+        if hyper_cfg.transformer.autoregressive_loss_weight:
+            info.update(
+                {
+                    "train/loss_transformer_auto_mse": hyper_cfg.transformer.autoregressive_loss_weight
+                    * float(trf_auto_mse.item())
+                }
+            )
+            trf_auto_mse = F.mse_loss(enc_out, trf_out, reduction="none")
+            trf_auto_mse[pad_mask] = 0
+            trf_auto_mse = trf_auto_mse.mean()
+        multi_spec = util.multispectral_loss(seq, pred, hyper_cfg.spectral_loss)
+        multi_spec[pad_mask] = 0
         multi_spec = multi_spec.mean()
         info.update(
             {
                 "train/loss_mse": float(mse.item()),
-                "train/loss_multi_spectral": spec_weight * multi_spec.item(),
+                "train/loss_multi_spectral": hyper_cfg.spectral_loss.weight
+                * multi_spec.item(),
                 "train/commitment_loss": hyper_cfg.vqvae.beta * commitment_loss.item(),
                 "train/embedding_loss": embedding_loss.item(),
             }
         )
-        loss = mse + spec_weight * multi_spec + vq_loss
+
+        loss = (
+            mse
+            + hyper_cfg.spectral_loss.weight * multi_spec
+            + vq_loss
+            + hyper_cfg.transformer.autoregressive_loss_weight * trf_auto_mse
+        )
+
     elif isinstance(model, vae.VAE):
         seq, _ = batch
         seq = seq.to(device)
@@ -107,6 +139,7 @@ def step(
                 "train/loss_multi_spectral": float(spec_weight * multi_spec.item()),
             }
         )
+
         loss = (
             mse
             + mae
@@ -114,6 +147,7 @@ def step(
             + spec_weight * spec_conv
             + spec_weight * multi_spec
         )
+
     elif isinstance(model, vqvae.VQVAE):
         seq, _ = batch
         seq = seq.to(device)
@@ -137,7 +171,9 @@ def step(
                 "train/loss_spectral": float(spec_weight * multi_spec.item()),
             }
         )
+
         loss = mse + spec_weight * multi_spec + vq_loss
+
     else:
         seq, _ = batch
         seq = seq.to(device)
@@ -152,7 +188,9 @@ def step(
                 "train/loss_spectral": float(spec_weight * multi_spec.item()),
             }
         )
+
         loss = mse + spec_weight * multi_spec
+
     return loss, pred, info
 
 

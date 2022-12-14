@@ -82,6 +82,7 @@ hyper:
     # num_heads_latent_dimension_div: ???
     # num_enc_layers: ???
     # num_dec_layers: ???
+    # autoregressive_loss_weight: ???
   kld_loss: null
     # weight: ???
   spectral_loss:  null

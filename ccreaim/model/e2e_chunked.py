@@ -1,12 +1,10 @@
-import itertools
-import logging
 from typing import Union
 
 import torch
-from omegaconf import OmegaConf
 from torch import nn
 from torch.nn import functional as F
 
+from ..utils import util
 from ..utils.cfg_classes import HyperConfig
 from . import ae, transformer, vae, vqvae
 
@@ -30,33 +28,59 @@ class E2EChunked(nn.Module):
         self.latent_dim = latent_dim
         self.seq_num = seq_num
         self.enc_out_length = enc_out_length
-        self.shift_amount = self.enc_out_length
 
-    def forward(self, data: torch.Tensor, key_pad_mask: torch.Tensor) -> torch.Tensor:
-        data = data.flatten(0, 1).unsqueeze(1)
-        enc_batch = self.encoder(data).transpose(-1, -2)
-        enc = enc_batch.view(-1, self.seq_num, self.enc_out_length, self.latent_dim)
-        enc = enc.flatten(1, 2)  # merge into sequence of vectors
-        key_pad_mask = key_pad_mask.repeat_interleave(self.enc_out_length, dim=-1)
-
-        # shift by one or by self.enc_out_length
-        enc_src = enc[:, : -self.shift_amount, :]
-        enc_tgt = enc[:, self.shift_amount :, :]
-        tgt_mask = self.trf.get_tgt_mask(enc_tgt.size(1))
-        tgt_mask = tgt_mask.to(enc_tgt.device)
-        z_comb = self.trf(
-            enc_src,
-            enc_tgt,
-            tgt_mask=tgt_mask,
-            src_key_padding_mask=key_pad_mask[:, : -self.shift_amount],
-            tgt_key_padding_mask=key_pad_mask[:, self.shift_amount :],
+    def forward(
+        self, data: torch.Tensor, key_pad_mask: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        data = data.view(-1, 1, self.seq_length)
+        enc_out_batch = self.encoder(data)
+        enc_out_batch = enc_out_batch.transpose(-1, -2)
+        enc_out = enc_out_batch.view(
+            -1, self.seq_num, self.enc_out_length, self.latent_dim
         )
-        z_comb = z_comb.view(-1, self.seq_num - 1, self.enc_out_length, self.latent_dim)
-        z_comb = z_comb.flatten(0, 1).transpose(-1, -2)
-        dec = self.decoder(z_comb)
-        dec = dec.squeeze()
-        dec = dec.view(-1, self.seq_num - 1, self.seq_length)
-        return dec
+        enc_out_flat = enc_out.flatten(1, 2)  # merge into sequence of vectors
+
+        # extend mask
+        key_pad_mask = key_pad_mask.repeat_interleave(self.enc_out_length, dim=-1)
+        src_key_pad_mask = key_pad_mask
+
+        src = enc_out_flat
+        # shift by one start token
+        tgt = torch.cat(
+            (
+                torch.zeros_like(enc_out_flat[:, 0:1, :], device=enc_out_flat.device),
+                enc_out_flat[:, :-1, :],
+            ),
+            dim=1,
+        )
+        tgt_key_pad_mask = torch.cat(
+            (
+                torch.zeros_like(key_pad_mask[:, 0:1], device=enc_out_flat.device),
+                key_pad_mask[:, :-1],
+            ),
+            dim=1,
+        )
+
+        tgt_mask = self.trf.get_tgt_mask(tgt.size(1))
+        tgt_mask = tgt_mask.to(tgt.device)
+        trf_out_flat = self.trf(
+            src,
+            tgt,
+            tgt_mask=tgt_mask,
+            src_key_padding_mask=src_key_pad_mask,
+            tgt_key_padding_mask=tgt_key_pad_mask,
+        )
+        trf_out = trf_out_flat.view(
+            -1, self.seq_num, self.enc_out_length, self.latent_dim
+        )
+        trf_out_re_flat = trf_out.view(
+            -1, self.enc_out_length, self.latent_dim
+        ).transpose(-1, -2)
+
+        dec_out = self.decoder(trf_out_re_flat)
+        dec_out = dec_out.squeeze()
+        dec_out = dec_out.view(-1, self.seq_num, self.seq_length)
+        return dec_out, enc_out, trf_out
 
     def generate(
         self, data: torch.Tensor, in_chunks: int, feed_in_tokens: int, gen_chunks: int
@@ -72,34 +96,37 @@ class E2EChunked(nn.Module):
         Returns:
             torch.Tensor: The generated audio
         """
-        data = data.flatten(0, 1).unsqueeze(1)
-        enc_batch = self.encoder(data).transpose(-1, -2)
-        enc = enc_batch.view(-1, in_chunks, self.enc_out_length, self.latent_dim)
-        if self.seq_cat:
-            enc = enc.flatten(1, 2)  # merge into sequence of vectors
-        else:
-            enc = enc.flatten(2, -1)
+        data = data.view(-1, 1, self.seq_length)
+        enc_out_batch = self.encoder(data)
+        enc_out_batch = enc_out_batch.transpose(-1, -2)
+        enc_out = enc_out_batch.view(
+            -1, in_chunks, self.enc_out_length, self.latent_dim
+        )
+        enc_out_flat = enc_out.flatten(1, 2)  # merge into sequence of vectors
 
-        enc_src = enc
+        src = enc_out_flat
         if feed_in_tokens == 0:
-            tgt = torch.zeros_like(enc_src[:, 0:1], device=enc_src.device)
+            tgt = torch.zeros_like(src[:, 0:1], device=src.device)
         else:
-            tgt = enc_src[:, 0:feed_in_tokens]
+            tgt = src[:, 0:feed_in_tokens]
 
-        for i in range(gen_chunks * self.enc_out_length):
+        for _ in range(gen_chunks * self.enc_out_length):
             tgt_mask = self.trf.get_tgt_mask(tgt.size(1))
             tgt_mask = tgt_mask.to(tgt.device)
-            trf_pred = self.trf(enc_src, tgt, tgt_mask=tgt_mask)
+            trf_pred = self.trf(src, tgt, tgt_mask=tgt_mask)
             tgt = torch.cat([tgt, trf_pred[:, -1:, :]], dim=1)
-        z_comb = tgt[:, feed_in_tokens:, :].view(
+        trf_out_flat = tgt[:, feed_in_tokens:, :]
+        trf_out = trf_out_flat.view(
             -1, gen_chunks, self.enc_out_length, self.latent_dim
         )
-        z_comb = z_comb.flatten(0, 1).transpose(-1, -2)
-        dec = self.decoder(z_comb)
-        dec = dec.squeeze()
-        dec = dec.view(-1, gen_chunks, self.seq_length)
+        trf_out_re_flat = trf_out.view(
+            -1, self.enc_out_length, self.latent_dim
+        ).transpose(-1, -2)
 
-        return dec
+        dec_out = self.decoder(trf_out_re_flat)
+        dec_out = dec_out.squeeze()
+        dec_out = dec_out.view(-1, gen_chunks, self.seq_length)
+        return dec_out
 
 
 class E2EChunkedVQVAE(nn.Module):
@@ -129,50 +156,73 @@ class E2EChunkedVQVAE(nn.Module):
 
     def forward(
         self, data: torch.Tensor, key_pad_mask: torch.Tensor
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        data = data.flatten(0, 1).unsqueeze(1)
-        enc_batch = (
-            self.encoder(data)
-            .transpose(-1, -2)
-            .view(-1, self.seq_num, self.enc_out_length, self.latent_dim)
-        )
-        # VQ
-        enc_flat = enc_batch.flatten(1, 2)
-        quantized_latents = self.vq(enc_flat.transpose(-1, -2)).transpose(-1, -2)
-        quantized_latents_res = enc_flat + (quantized_latents - enc_flat).detach()
-        enc = quantized_latents_res.view(
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        data = data.view(-1, 1, self.seq_length)
+        enc_out_batch = self.encoder(data)
+        enc_out_batch = enc_out_batch.transpose(-1, -2)
+        enc_out = enc_out_batch.view(
             -1, self.seq_num, self.enc_out_length, self.latent_dim
         )
-        enc = enc.flatten(1, 2)  # merge into sequence of vectors
-        key_pad_mask = key_pad_mask.repeat_interleave(self.enc_out_length, dim=-1)
+        enc_out_flat = enc_out.flatten(1, 2)  # merge into sequence of vectors
 
-        # shift by one or by self.enc_out_length
-        enc_src = quantized_latents_res[:, : -self.shift_amount, :]
-        enc_tgt = quantized_latents_res[:, self.shift_amount :, :]
-        tgt_mask = self.trf.get_tgt_mask(enc_tgt.size(1))
-        tgt_mask = tgt_mask.to(enc_tgt.device)
-        z_comb = self.trf(
-            enc_src,
-            enc_tgt,
-            tgt_mask=tgt_mask,
-            src_key_padding_mask=key_pad_mask[:, : -self.shift_amount],
-            tgt_key_padding_mask=key_pad_mask[:, self.shift_amount :],
+        # VQ
+        quantized_latents = self.vq(enc_out_flat.transpose(-1, -2)).transpose(-1, -2)
+        quantized_latents_res = (
+            enc_out_flat + (quantized_latents - enc_out_flat).detach()
         )
-        z_comb = z_comb.view(-1, self.seq_num - 1, self.enc_out_length, self.latent_dim)
+        vq_out = quantized_latents_res.view(
+            -1, self.seq_num, self.enc_out_length, self.latent_dim
+        )
+        vq_out_flat = vq_out.flatten(1, 2)  # merge into sequence of vectors
+
+        key_pad_mask = key_pad_mask.repeat_interleave(self.enc_out_length, dim=-1)
+        src_key_pad_mask = key_pad_mask
+
+        src = vq_out_flat
+        # shift by one start token
+        tgt = torch.cat(
+            (
+                torch.zeros_like(vq_out_flat[:, 0:1, :], device=vq_out_flat.device),
+                vq_out_flat[:, :-1, :],
+            ),
+            dim=1,
+        )
+        tgt_key_pad_mask = torch.cat(
+            (
+                torch.zeros_like(key_pad_mask[:, 0:1], device=enc_out_flat.device),
+                key_pad_mask[:, :-1],
+            ),
+            dim=1,
+        )
+
+        tgt_mask = self.trf.get_tgt_mask(tgt.size(1))
+        tgt_mask = tgt_mask.to(tgt.device)
+        trf_out_flat = self.trf(
+            src,
+            tgt,
+            tgt_mask=tgt_mask,
+            src_key_padding_mask=src_key_pad_mask,
+            tgt_key_padding_mask=tgt_key_pad_mask,
+        )
+        trf_out = trf_out_flat.view(
+            -1, self.seq_num, self.enc_out_length, self.latent_dim
+        )
         # Transform to probability over tokens
-        z_soft = F.softmax(self.trf_out_to_tokens(z_comb))
+        emb_ids_prob = F.softmax(self.trf_out_to_tokens(trf_out))
 
         # VQ lookup
-        z_ids = z_soft.argmax(-1)
-        z_quant = self.vq.lookup(z_ids.flatten(0, 1))
+        emb_ids = emb_ids_prob.argmax(-1)
+        emb_ids_flat = emb_ids.flatten(0, 1)
+        trf_vq_out = self.vq.lookup(emb_ids_flat)
 
-        z_quant = z_quant.transpose(-1, -2)
-        dec = self.decoder(z_quant)
-        dec = dec.squeeze()
-        dec = dec.view(-1, self.seq_num - 1, self.seq_length)
+        trf_vq_out = trf_vq_out.transpose(-1, -2)
+        dec_out = self.decoder(trf_vq_out)
+        dec_out = dec_out.squeeze()
+        dec_out = dec_out.view(-1, self.seq_num, self.seq_length)
         return (
-            dec,
-            enc,
+            dec_out,
+            enc_out,
+            trf_out,
             quantized_latents,
         )
 
@@ -190,42 +240,47 @@ class E2EChunkedVQVAE(nn.Module):
         Returns:
             torch.Tensor: The generated audio
         """
-        data = data.flatten(0, 1).unsqueeze(1)
-        enc_batch = self.encoder(data).transpose(-1, -2)
-        enc = enc_batch.view(-1, in_chunks, self.enc_out_length, self.latent_dim)
-        if self.seq_cat:
-            enc = enc.flatten(1, 2)  # merge into sequence of vectors
-        else:
-            enc = enc.flatten(2, -1)
+        data = data.view(-1, 1, self.seq_length)
+        enc_out_batch = self.encoder(data)
+        enc_out_batch = enc_out_batch.transpose(-1, -2)
+        enc_out = enc_out_batch.view(
+            -1, in_chunks, self.enc_out_length, self.latent_dim
+        )
+        enc_out_flat = enc_out.flatten(1, 2)  # merge into sequence of vectors
 
         # VQ
-        quantized_enc = self.vq(enc.transpose(-1, -2)).transpose(-1, -2)
+        quantized_enc = self.vq(enc_out_flat.transpose(-1, -2)).transpose(-1, -2)
 
-        enc_src = quantized_enc
+        src = quantized_enc
         if feed_in_tokens == 0:
-            tgt = torch.zeros_like(enc_src[:, 0:1], device=enc_src.device)
+            tgt = torch.zeros_like(src[:, 0:1], device=src.device)
         else:
-            tgt = enc_src[:, 0:feed_in_tokens]
+            tgt = src[:, 0:feed_in_tokens]
 
-        for i in range(gen_chunks * self.enc_out_length):
+        for _ in range(gen_chunks * self.enc_out_length):
             tgt_mask = self.trf.get_tgt_mask(tgt.size(1))
             tgt_mask = tgt_mask.to(tgt.device)
-            trf_pred = self.trf(enc_src, tgt, tgt_mask=tgt_mask)
-            z_comb = trf_pred[:, -1:, :]
-            z_soft = F.softmax(self.trf_out_to_tokens(z_comb))
-            z_ids = z_soft.argmax(-1)
-            z_quant = self.vq.lookup(z_ids.flatten(0, 1))
-            tgt = torch.cat([tgt, z_quant.unsqueeze(0)], dim=1)
+            trf_out_flat = self.trf(src, tgt, tgt_mask=tgt_mask)
+            trf_pred = trf_out_flat[:, -1:, :]
+            emb_ids_prob = F.softmax(self.trf_out_to_tokens(trf_pred))
+            # VQ lookup
+            emb_ids = emb_ids_prob.argmax(-1)
+            emb_ids_flat = emb_ids.flatten(0, 1)
+            trf_vq_out = self.vq.lookup(emb_ids_flat)
+            tgt = torch.cat([tgt, trf_vq_out.unsqueeze(0)], dim=1)
 
-        z_comb = tgt[:, feed_in_tokens:, :].view(
+        trf_out_flat = tgt[:, feed_in_tokens:, :]
+        trf_out = trf_out_flat.view(
             -1, gen_chunks, self.enc_out_length, self.latent_dim
         )
-        z_comb = z_comb.flatten(0, 1).transpose(-1, -2)
-        dec = self.decoder(z_comb)
-        dec = dec.squeeze()
-        dec = dec.view(-1, gen_chunks, self.seq_length)
+        trf_out_re_flat = trf_out.view(
+            -1, self.enc_out_length, self.latent_dim
+        ).transpose(-1, -2)
 
-        return dec
+        dec_out = self.decoder(trf_out_re_flat)
+        dec_out = dec_out.squeeze()
+        dec_out = dec_out.view(-1, gen_chunks, self.seq_length)
+        return dec_out
 
 
 def _create_e2e_chunked_ae(hyper_cfg: HyperConfig) -> E2EChunked:
@@ -268,6 +323,10 @@ def _create_e2e_chunked_res_ae(hyper_cfg: HyperConfig) -> E2EChunked:
         num_decoder_layers=hyper_cfg.transformer.num_dec_layers,
         dropout_p=0.1,
     )
+
+    if hyper_cfg.pre_trained_model_path is not None:
+        encoder, decoder = util.load_pre_trained_ae(hyper_cfg, encoder, decoder)
+
     return E2EChunked(
         encoder,
         trf,
@@ -299,88 +358,9 @@ def _create_e2e_chunked_res_vqvae(hyper_cfg: HyperConfig) -> E2EChunkedVQVAE:
     )
 
     if hyper_cfg.pre_trained_model_path is not None:
-        checkpoint = torch.load(hyper_cfg.pre_trained_model_path, map_location="cpu")
-        pretrained_state_dict = checkpoint["model_state_dict"]
-        hyper_cfg_schema = OmegaConf.structured(HyperConfig)
-        conf = OmegaConf.create(checkpoint["hyper_config"])
-        pretrained_hyper_cfg = OmegaConf.merge(hyper_cfg_schema, conf)
-
-        if (
-            hyper_cfg.latent_dim == pretrained_hyper_cfg.latent_dim
-            and hyper_cfg.seq_len == pretrained_hyper_cfg.seq_len
-            and hyper_cfg.res_ae.downs_t == pretrained_hyper_cfg.res_ae.downs_t
-            and hyper_cfg.res_ae.strides_t == pretrained_hyper_cfg.res_ae.strides_t
-            and hyper_cfg.res_ae.input_emb_width
-            == pretrained_hyper_cfg.res_ae.input_emb_width
-            and hyper_cfg.res_ae.block_width == pretrained_hyper_cfg.res_ae.block_width
-            and hyper_cfg.res_ae.block_depth == pretrained_hyper_cfg.res_ae.block_depth
-            and hyper_cfg.res_ae.block_m_conv
-            == pretrained_hyper_cfg.res_ae.block_m_conv
-            and hyper_cfg.res_ae.block_dilation_growth_rate
-            == pretrained_hyper_cfg.res_ae.block_dilation_growth_rate
-            and hyper_cfg.res_ae.block_dilation_cycle
-            == pretrained_hyper_cfg.res_ae.block_dilation_cycle
-            and hyper_cfg.vqvae.num_embeddings
-            == pretrained_hyper_cfg.vqvae.num_embeddings
-        ):
-            tmp_vq = vqvae.VQVAE(encoder, decoder, vq)
-            tmp_vq.load_state_dict(pretrained_state_dict)
-            encoder = tmp_vq.encoder
-            vq = tmp_vq.vq
-            decoder = tmp_vq.decoder
-            if hyper_cfg.freeze_pre_trained:
-                encoder.requires_grad_(False)
-                # vq is frozen in operate by emedding.grad = 0
-                decoder.requires_grad_(False)
-        else:
-            raise ValueError(
-                f"Pre-trained config is not matching current config:\n"
-                "\t\t\t\tCurrent config\t---\tPre-trained config\n"
-                "latent_dim:\t\t\t\t"
-                f"{hyper_cfg.latent_dim}"
-                "\t---\t"
-                f"{pretrained_hyper_cfg.latent_dim}\n"
-                "seq_len:\t\t\t\t"
-                f"{hyper_cfg.seq_len}"
-                "\t---\t"
-                f"{pretrained_hyper_cfg.seq_len}\n"
-                "res_ae.downs_t:\t\t\t\t"
-                f"{hyper_cfg.res_ae.downs_t}"
-                "\t---\t"
-                f"{pretrained_hyper_cfg.res_ae.downs_t}\n"
-                "res_ae.strides_t:\t\t\t"
-                f"{hyper_cfg.res_ae.strides_t}"
-                "\t---\t"
-                f"{pretrained_hyper_cfg.res_ae.strides_t}\n"
-                "res_ae.input_emb_width:\t\t\t"
-                f"{hyper_cfg.res_ae.input_emb_width}"
-                "\t---\t"
-                f"{pretrained_hyper_cfg.res_ae.input_emb_width}\n"
-                "res_ae.block_width:\t\t\t"
-                f"{hyper_cfg.res_ae.block_width}"
-                "\t---\t"
-                f"{pretrained_hyper_cfg.res_ae.block_width}\n"
-                "res_ae.block_depth:\t\t\t"
-                f"{hyper_cfg.res_ae.block_depth}"
-                "\t---\t"
-                f"{pretrained_hyper_cfg.res_ae.block_depth}\n"
-                "res_ae.block_m_conv:\t\t\t"
-                f"{hyper_cfg.res_ae.block_m_conv}"
-                "\t---\t"
-                f"{pretrained_hyper_cfg.res_ae.block_m_conv}\n"
-                "res_ae.block_dilation_growth_rate:\t"
-                f"{hyper_cfg.res_ae.block_dilation_growth_rate}"
-                "\t---\t"
-                f"{pretrained_hyper_cfg.res_ae.block_dilation_growth_rate}\n"
-                "res_ae.block_dilation_cycle:\t\t"
-                f"{hyper_cfg.res_ae.block_dilation_cycle}"
-                "\t---\t"
-                f"{pretrained_hyper_cfg.res_ae.block_dilation_cycle}\n"
-                "vqvae.num_embeddings:\t\t\t"
-                f"{hyper_cfg.vqvae.num_embeddings}"
-                "\t---\t"
-                f"{pretrained_hyper_cfg.vqvae.num_embeddings}\n"
-            )
+        encoder, vq, decoder = util.load_pre_trained_vqvae(
+            hyper_cfg, encoder, vq, decoder
+        )
 
     return E2EChunkedVQVAE(
         encoder,

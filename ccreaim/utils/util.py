@@ -4,13 +4,14 @@ import math
 import random
 import tarfile
 from pathlib import Path
-from typing import List
 
 import numpy as np
 import torch
 import torchaudio
+from omegaconf import OmegaConf
 
-from .cfg_classes import BaseConfig, SpectralLossConfig
+from ..model import ae, vqvae
+from .cfg_classes import BaseConfig, HyperConfig, SpectralLossConfig
 
 log = logging.getLogger(__name__)
 
@@ -23,9 +24,9 @@ def set_seed(seed: int):
         torch.cuda.manual_seed(seed)
 
 
-def chop_sample(sample: torch.Tensor, sample_length: int) -> List[torch.Tensor]:
+def chop_sample(sample: torch.Tensor, sample_length: int) -> list[torch.Tensor]:
     assert len(sample.size()) == 1, "Sample is not 1 dimensional" + str(sample.size())
-    chopped_samples_list: List[torch.Tensor] = []
+    chopped_samples_list: list[torch.Tensor] = []
     n_chops = len(sample) // sample_length
     for s in range(n_chops):
         chopped_samples_list.append(sample[s * sample_length : (s + 1) * sample_length])
@@ -89,7 +90,7 @@ def save_model_prediction(model_name: str, pred: torch.Tensor, save_path: Path) 
         log.error(e)
 
 
-def get_sample_path_list(data_root: Path, ext: str = "mp3") -> List[Path]:
+def get_sample_path_list(data_root: Path, ext: str = "mp3") -> list[Path]:
     return list(data_root.rglob(f"*.{ext}"))
 
 
@@ -120,6 +121,174 @@ def get_model_path(cfg: BaseConfig):
     exp_path = Path(cfg.logging.model_checkpoints)
     model_name = f"{cfg.hyper.model}_seqlen-{cfg.hyper.seq_len}_bs-{cfg.hyper.batch_size}_lr-{cfg.hyper.learning_rate}_seed-{cfg.hyper.seed}"
     return exp_path, model_name
+
+
+def load_pre_trained_ae(
+    hyper_cfg: HyperConfig, encoder: ae.ResEncoder, decoder: ae.ResDecoder
+) -> tuple[ae.ResEncoder, ae.ResDecoder]:
+    checkpoint = torch.load(hyper_cfg.pre_trained_model_path, map_location="cpu")
+    pretrained_state_dict = checkpoint["model_state_dict"]
+    hyper_cfg_schema = OmegaConf.structured(HyperConfig)
+    conf = OmegaConf.create(checkpoint["hyper_config"])
+    pretrained_hyper_cfg = OmegaConf.merge(hyper_cfg_schema, conf)
+
+    if (
+        hyper_cfg.latent_dim == pretrained_hyper_cfg.latent_dim
+        and hyper_cfg.seq_len == pretrained_hyper_cfg.seq_len
+        and hyper_cfg.res_ae.downs_t == pretrained_hyper_cfg.res_ae.downs_t
+        and hyper_cfg.res_ae.strides_t == pretrained_hyper_cfg.res_ae.strides_t
+        and hyper_cfg.res_ae.input_emb_width
+        == pretrained_hyper_cfg.res_ae.input_emb_width
+        and hyper_cfg.res_ae.block_width == pretrained_hyper_cfg.res_ae.block_width
+        and hyper_cfg.res_ae.block_depth == pretrained_hyper_cfg.res_ae.block_depth
+        and hyper_cfg.res_ae.block_m_conv == pretrained_hyper_cfg.res_ae.block_m_conv
+        and hyper_cfg.res_ae.block_dilation_growth_rate
+        == pretrained_hyper_cfg.res_ae.block_dilation_growth_rate
+        and hyper_cfg.res_ae.block_dilation_cycle
+        == pretrained_hyper_cfg.res_ae.block_dilation_cycle
+    ):
+        tmp_ae = ae.AutoEncoder(encoder, decoder)
+        tmp_ae.load_state_dict(pretrained_state_dict)
+        out_encoder = tmp_ae.encoder
+        out_decoder = tmp_ae.decoder
+        if hyper_cfg.freeze_pre_trained:
+            encoder.requires_grad_(False)
+            decoder.requires_grad_(False)
+        return out_encoder, out_decoder
+    else:
+        raise ValueError(
+            f"Pre-trained config is not matching current config:\n"
+            "\t\t\t\tCurrent config\t---\tPre-trained config\n"
+            "latent_dim:\t\t\t\t"
+            f"{hyper_cfg.latent_dim}"
+            "\t---\t"
+            f"{pretrained_hyper_cfg.latent_dim}\n"
+            "seq_len:\t\t\t\t"
+            f"{hyper_cfg.seq_len}"
+            "\t---\t"
+            f"{pretrained_hyper_cfg.seq_len}\n"
+            "res_ae.downs_t:\t\t\t\t"
+            f"{hyper_cfg.res_ae.downs_t}"
+            "\t---\t"
+            f"{pretrained_hyper_cfg.res_ae.downs_t}\n"
+            "res_ae.strides_t:\t\t\t"
+            f"{hyper_cfg.res_ae.strides_t}"
+            "\t---\t"
+            f"{pretrained_hyper_cfg.res_ae.strides_t}\n"
+            "res_ae.input_emb_width:\t\t\t"
+            f"{hyper_cfg.res_ae.input_emb_width}"
+            "\t---\t"
+            f"{pretrained_hyper_cfg.res_ae.input_emb_width}\n"
+            "res_ae.block_width:\t\t\t"
+            f"{hyper_cfg.res_ae.block_width}"
+            "\t---\t"
+            f"{pretrained_hyper_cfg.res_ae.block_width}\n"
+            "res_ae.block_depth:\t\t\t"
+            f"{hyper_cfg.res_ae.block_depth}"
+            "\t---\t"
+            f"{pretrained_hyper_cfg.res_ae.block_depth}\n"
+            "res_ae.block_m_conv:\t\t\t"
+            f"{hyper_cfg.res_ae.block_m_conv}"
+            "\t---\t"
+            f"{pretrained_hyper_cfg.res_ae.block_m_conv}\n"
+            "res_ae.block_dilation_growth_rate:\t"
+            f"{hyper_cfg.res_ae.block_dilation_growth_rate}"
+            "\t---\t"
+            f"{pretrained_hyper_cfg.res_ae.block_dilation_growth_rate}\n"
+            "res_ae.block_dilation_cycle:\t\t"
+            f"{hyper_cfg.res_ae.block_dilation_cycle}"
+            "\t---\t"
+            f"{pretrained_hyper_cfg.res_ae.block_dilation_cycle}\n"
+        )
+
+
+def load_pre_trained_vqvae(
+    hyper_cfg: HyperConfig,
+    encoder: ae.ResEncoder,
+    vq: vqvae.VectorQuantizer,
+    decoder: ae.ResDecoder,
+) -> tuple[ae.ResEncoder, vqvae.VectorQuantizer, ae.ResDecoder]:
+    checkpoint = torch.load(hyper_cfg.pre_trained_model_path, map_location="cpu")
+    pretrained_state_dict = checkpoint["model_state_dict"]
+    hyper_cfg_schema = OmegaConf.structured(HyperConfig)
+    conf = OmegaConf.create(checkpoint["hyper_config"])
+    pretrained_hyper_cfg = OmegaConf.merge(hyper_cfg_schema, conf)
+
+    if (
+        hyper_cfg.latent_dim == pretrained_hyper_cfg.latent_dim
+        and hyper_cfg.seq_len == pretrained_hyper_cfg.seq_len
+        and hyper_cfg.res_ae.downs_t == pretrained_hyper_cfg.res_ae.downs_t
+        and hyper_cfg.res_ae.strides_t == pretrained_hyper_cfg.res_ae.strides_t
+        and hyper_cfg.res_ae.input_emb_width
+        == pretrained_hyper_cfg.res_ae.input_emb_width
+        and hyper_cfg.res_ae.block_width == pretrained_hyper_cfg.res_ae.block_width
+        and hyper_cfg.res_ae.block_depth == pretrained_hyper_cfg.res_ae.block_depth
+        and hyper_cfg.res_ae.block_m_conv == pretrained_hyper_cfg.res_ae.block_m_conv
+        and hyper_cfg.res_ae.block_dilation_growth_rate
+        == pretrained_hyper_cfg.res_ae.block_dilation_growth_rate
+        and hyper_cfg.res_ae.block_dilation_cycle
+        == pretrained_hyper_cfg.res_ae.block_dilation_cycle
+        and hyper_cfg.vqvae.num_embeddings == pretrained_hyper_cfg.vqvae.num_embeddings
+    ):
+        tmp_vq = vqvae.VQVAE(encoder, decoder, vq)
+        tmp_vq.load_state_dict(pretrained_state_dict)
+        out_encoder = tmp_vq.encoder
+        out_vq = tmp_vq.vq
+        out_decoder = tmp_vq.decoder
+        if hyper_cfg.freeze_pre_trained:
+            encoder.requires_grad_(False)
+            # vq is frozen in operate by emedding.grad = 0
+            decoder.requires_grad_(False)
+        return out_encoder, out_vq, out_decoder
+    else:
+        raise ValueError(
+            f"Pre-trained config is not matching current config:\n"
+            "\t\t\t\tCurrent config\t---\tPre-trained config\n"
+            "latent_dim:\t\t\t\t"
+            f"{hyper_cfg.latent_dim}"
+            "\t---\t"
+            f"{pretrained_hyper_cfg.latent_dim}\n"
+            "seq_len:\t\t\t\t"
+            f"{hyper_cfg.seq_len}"
+            "\t---\t"
+            f"{pretrained_hyper_cfg.seq_len}\n"
+            "res_ae.downs_t:\t\t\t\t"
+            f"{hyper_cfg.res_ae.downs_t}"
+            "\t---\t"
+            f"{pretrained_hyper_cfg.res_ae.downs_t}\n"
+            "res_ae.strides_t:\t\t\t"
+            f"{hyper_cfg.res_ae.strides_t}"
+            "\t---\t"
+            f"{pretrained_hyper_cfg.res_ae.strides_t}\n"
+            "res_ae.input_emb_width:\t\t\t"
+            f"{hyper_cfg.res_ae.input_emb_width}"
+            "\t---\t"
+            f"{pretrained_hyper_cfg.res_ae.input_emb_width}\n"
+            "res_ae.block_width:\t\t\t"
+            f"{hyper_cfg.res_ae.block_width}"
+            "\t---\t"
+            f"{pretrained_hyper_cfg.res_ae.block_width}\n"
+            "res_ae.block_depth:\t\t\t"
+            f"{hyper_cfg.res_ae.block_depth}"
+            "\t---\t"
+            f"{pretrained_hyper_cfg.res_ae.block_depth}\n"
+            "res_ae.block_m_conv:\t\t\t"
+            f"{hyper_cfg.res_ae.block_m_conv}"
+            "\t---\t"
+            f"{pretrained_hyper_cfg.res_ae.block_m_conv}\n"
+            "res_ae.block_dilation_growth_rate:\t"
+            f"{hyper_cfg.res_ae.block_dilation_growth_rate}"
+            "\t---\t"
+            f"{pretrained_hyper_cfg.res_ae.block_dilation_growth_rate}\n"
+            "res_ae.block_dilation_cycle:\t\t"
+            f"{hyper_cfg.res_ae.block_dilation_cycle}"
+            "\t---\t"
+            f"{pretrained_hyper_cfg.res_ae.block_dilation_cycle}\n"
+            "vqvae.num_embeddings:\t\t\t"
+            f"{hyper_cfg.vqvae.num_embeddings}"
+            "\t---\t"
+            f"{pretrained_hyper_cfg.vqvae.num_embeddings}\n"
+        )
 
 
 # Spectral loss
