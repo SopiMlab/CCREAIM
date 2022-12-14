@@ -39,15 +39,15 @@ def step(
         mse = mse.mean()
         trf_auto_mse = torch.tensor(0)
         if hyper_cfg.transformer.autoregressive_loss_weight:
+            trf_auto_mse = F.mse_loss(enc_out, trf_out, reduction="none")
+            trf_auto_mse[pad_mask] = 0
+            trf_auto_mse = trf_auto_mse.mean()
             info.update(
                 {
                     "train/loss_transformer_auto_mse": hyper_cfg.transformer.autoregressive_loss_weight
                     * float(trf_auto_mse.item())
                 }
             )
-            trf_auto_mse = F.mse_loss(enc_out, trf_out, reduction="none")
-            trf_auto_mse[pad_mask] = 0
-            trf_auto_mse = trf_auto_mse.mean()
         multi_spec = util.multispectral_loss(seq, pred, hyper_cfg.spectral_loss)
         multi_spec[pad_mask] = 0
         multi_spec = multi_spec.mean()
@@ -86,15 +86,15 @@ def step(
         mse = mse.mean()
         trf_auto_mse = torch.tensor(0)
         if hyper_cfg.transformer.autoregressive_loss_weight:
+            trf_auto_mse = F.mse_loss(enc_out, trf_out, reduction="none")
+            trf_auto_mse[pad_mask] = 0
+            trf_auto_mse = trf_auto_mse.mean()
             info.update(
                 {
                     "train/loss_transformer_auto_mse": hyper_cfg.transformer.autoregressive_loss_weight
                     * float(trf_auto_mse.item())
                 }
             )
-            trf_auto_mse = F.mse_loss(enc_out, trf_out, reduction="none")
-            trf_auto_mse[pad_mask] = 0
-            trf_auto_mse = trf_auto_mse.mean()
         multi_spec = util.multispectral_loss(seq, pred, hyper_cfg.spectral_loss)
         multi_spec[pad_mask] = 0
         multi_spec = multi_spec.mean()
