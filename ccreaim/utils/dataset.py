@@ -23,6 +23,7 @@ def prepare_dataset_on_tmp(data_tar: str, logging_cfg: LoggingConfig) -> Path:
     log.info(f"Copying data tar to: {tmp}")
     tmp_data_tar_path = shutil.copy2(data_tar, tmp)
     with tarfile.open(tmp_data_tar_path, "r") as tmp_data_tar:
+        log.info(f"Extracting files")
         tmp_data_tar.extractall(tmp)
     Path(tmp_data_tar_path).unlink()
     return tmp
