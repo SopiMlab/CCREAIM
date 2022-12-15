@@ -2,6 +2,7 @@ import logging
 import shutil
 import tarfile
 from pathlib import Path
+from time import sleep
 from typing import Union
 
 import torch
@@ -16,17 +17,28 @@ from ..utils.cfg_classes import LoggingConfig
 log = logging.getLogger(__name__)
 
 
-def prepare_dataset_on_tmp(data_tar: str, logging_cfg: LoggingConfig) -> Path:
+def prepare_dataset_on_tmp(data_tar: str, seq_len: int) -> Path:
     hc = HydraConfig.get()
-    tmp = Path(f"/tmp/{logging_cfg.run_id}-{hc.job.id}")
-    tmp.mkdir(exist_ok=False)
-    log.info(f"Copying data tar to: {tmp}")
-    tmp_data_tar_path = shutil.copy2(data_tar, tmp)
-    with tarfile.open(tmp_data_tar_path, "r") as tmp_data_tar:
-        log.info(f"Extracting files")
-        tmp_data_tar.extractall(tmp)
-    Path(tmp_data_tar_path).unlink()
-    return tmp
+    tmp_preparing = Path(f"/tmp/chopped_{seq_len}_preparing")
+    tmp = Path(f"/tmp/chopped_{seq_len}")
+    while tmp_preparing.exists():
+        log.info(
+            f"{str(tmp_preparing)} exists on the filesystem, waiting for data preparation"
+        )
+        sleep(10)
+    if tmp.exists():
+        log.info(f"Pre-existing dataset found at {str(tmp)}, skipping data preparation")
+        return tmp
+    else:
+        tmp_preparing.mkdir(exist_ok=False)
+        log.info(f"Copying data tar to: {tmp_preparing}")
+        tmp_data_tar_path = shutil.copy2(data_tar, tmp_preparing)
+        with tarfile.open(tmp_data_tar_path, "r") as tmp_data_tar:
+            log.info(f"Extracting files")
+            tmp_data_tar.extractall(tmp_preparing)
+        Path(tmp_data_tar_path).unlink()
+        tmp_preparing.rename(tmp)
+        return tmp
 
 
 class AudioDataset(data.Dataset):

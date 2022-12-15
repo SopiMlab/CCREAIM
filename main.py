@@ -51,7 +51,7 @@ def main(cfg: cfg_classes.BaseConfig):
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
     tmp_data_root = dataset.prepare_dataset_on_tmp(
-        data_tar=cfg.data.data_tar, logging_cfg=cfg.logging
+        data_tar=cfg.data.data_tar, seq_len=cfg.hyper.seq_len
     )
 
     # Get the dataset, use audio data for any non-transformer model,
