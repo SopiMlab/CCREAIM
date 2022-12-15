@@ -69,8 +69,7 @@ def step(
         seq, _, pad_mask = batch
         seq = seq.to(device)
         pad_mask = pad_mask.to(device)
-        pred, enc_out, trf_out, vq_out = model(seq, pad_mask)
-
+        pred, enc_out, vq_out, vq_inds, trf_inds_prob = model(seq, pad_mask)
         # Compute the VQ Losses
         if not hyper_cfg.freeze_pre_trained:
             commitment_loss = F.mse_loss(vq_out.detach(), enc_out)
@@ -84,15 +83,18 @@ def step(
         mse = F.mse_loss(pred, seq, reduction="none")
         mse[pad_mask] = 0
         mse = mse.mean()
-        trf_auto_mse = torch.tensor(0)
+        trf_auto_ce = torch.tensor(0)
         if hyper_cfg.transformer.autoregressive_loss_weight:
-            trf_auto_mse = F.mse_loss(enc_out, trf_out, reduction="none")
-            trf_auto_mse[pad_mask] = 0
-            trf_auto_mse = trf_auto_mse.mean()
+            trf_inds_prob = trf_inds_prob.view(-1, hyper_cfg.vqvae.num_embeddings)
+            vq_inds = vq_inds.view(-1)
+            trf_auto_ce = F.cross_entropy(trf_inds_prob, vq_inds, reduction="none")
+            trf_auto_ce = trf_auto_ce.view(-1, hyper_cfg.num_seq, model.enc_out_length)
+            trf_auto_ce[pad_mask] = 0
+            trf_auto_ce = trf_auto_ce.mean()
             info.update(
                 {
-                    "train/loss_transformer_auto_mse": hyper_cfg.transformer.autoregressive_loss_weight
-                    * float(trf_auto_mse.item())
+                    "train/loss_transformer_auto_ce": hyper_cfg.transformer.autoregressive_loss_weight
+                    * float(trf_auto_ce.item())
                 }
             )
         multi_spec = util.multispectral_loss(seq, pred, hyper_cfg.spectral_loss)
@@ -112,7 +114,7 @@ def step(
             mse
             + hyper_cfg.spectral_loss.weight * multi_spec
             + vq_loss
-            + hyper_cfg.transformer.autoregressive_loss_weight * trf_auto_mse
+            + hyper_cfg.transformer.autoregressive_loss_weight * trf_auto_ce
         )
 
     elif isinstance(model, vae.VAE):

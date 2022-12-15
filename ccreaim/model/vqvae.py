@@ -25,7 +25,7 @@ class VQVAE(nn.Module):
         self, data: torch.Tensor
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         e = self.encoder(data)
-        quantized_latents = self.vq(e)
+        quantized_latents, _ = self.vq(e)
         quantized_latents_res = e + (quantized_latents - e).detach()
         d = self.decoder(quantized_latents_res)
         return d, e, quantized_latents
@@ -44,7 +44,7 @@ class VectorQuantizer(nn.Module):
             "usage", torch.full((self.K,), 1.0 / self.K), persistent=False
         )
 
-    def forward(self, latents: torch.Tensor) -> torch.Tensor:
+    def forward(self, latents: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         latents = latents.transpose(1, 2).contiguous()  # [B x D x S] -> [B x S x D]
 
         # Compute L2 distance between latents and embedding weights
@@ -58,7 +58,7 @@ class VectorQuantizer(nn.Module):
             # Update usage and reset unused latents
             self.update_and_reset(encoding_inds, latents)
         # [B x D x S]
-        return quantized_latents.transpose(1, 2).contiguous()
+        return quantized_latents.transpose(1, 2).contiguous(), encoding_inds
 
     def update_and_reset(self, ids: torch.Tensor, latents: torch.Tensor) -> None:
         flat_latents = latents.view(-1, self.D)
