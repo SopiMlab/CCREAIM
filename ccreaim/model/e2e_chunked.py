@@ -156,7 +156,8 @@ class E2EChunkedVQVAE(nn.Module):
 
     def forward(
         self, data: torch.Tensor, key_pad_mask: torch.Tensor
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+
         data = data.view(-1, 1, self.seq_length)
         enc_out_batch = self.encoder(data)
         enc_out_batch = enc_out_batch.transpose(-1, -2)
@@ -166,7 +167,10 @@ class E2EChunkedVQVAE(nn.Module):
         enc_out_flat = enc_out.flatten(1, 2)  # merge into sequence of vectors
 
         # VQ
-        quantized_latents = self.vq(enc_out_flat.transpose(-1, -2)).transpose(-1, -2)
+        quantized_latents, vq_inds = self.vq(enc_out_flat.transpose(-1, -2))
+        vq_inds = vq_inds.view(-1, self.seq_num, self.enc_out_length)
+
+        quantized_latents = quantized_latents.transpose(-1, -2)
         quantized_latents_res = (
             enc_out_flat + (quantized_latents - enc_out_flat).detach()
         )
@@ -175,6 +179,7 @@ class E2EChunkedVQVAE(nn.Module):
         )
         vq_out_flat = vq_out.flatten(1, 2)  # merge into sequence of vectors
 
+        # Mask
         key_pad_mask = key_pad_mask.repeat_interleave(self.enc_out_length, dim=-1)
         src_key_pad_mask = key_pad_mask
 
@@ -222,8 +227,9 @@ class E2EChunkedVQVAE(nn.Module):
         return (
             dec_out,
             enc_out,
-            trf_out,
-            quantized_latents,
+            vq_out,
+            vq_inds,
+            emb_ids_prob,
         )
 
     def generate(
