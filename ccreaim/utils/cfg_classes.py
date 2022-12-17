@@ -118,6 +118,7 @@ class HyperConfig:
     epochs: int
     batch_size: int
     learning_rate: float
+    lr_scheduler_gamma: float
     freeze_pre_trained: Optional[bool] = False
     pre_trained_model_path: Optional[str] = None
     kld_loss: Optional[KldLossConfig] = None
