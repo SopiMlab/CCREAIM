@@ -66,9 +66,12 @@ def train(
         if not cfg.logging.silent:
             log.info(f"Epoch {epoch} complete, total loss: {running_loss}")
 
-        if not cfg.logging.silent and cfg.hyper.lr_scheduler_gamma < 1.0:
+        if cfg.hyper.lr_scheduler_gamma < 1.0:
             scheduler.step()
-            log.info(f"Lowering learning rate to: {scheduler.get_last_lr()[-1]:.3e}")
+            if not cfg.logging.silent:
+                log.info(
+                    f"Lowering learning rate to: {scheduler.get_last_lr()[-1]:.3e}"
+                )
 
         if cfg.logging.checkpoint != 0 and epoch % cfg.logging.checkpoint == 0:
             save_path = checkpoints_path / Path(f"{model_name}_ep-{epoch:03d}.pt")
