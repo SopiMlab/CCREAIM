@@ -217,7 +217,7 @@ class E2EChunkedVQVAE(nn.Module):
 
         # VQ lookup
         emb_ids = emb_ids_prob.argmax(-1)
-        emb_ids_flat = emb_ids.flatten(0, 1)
+        emb_ids_flat = emb_ids.view(-1, self.enc_out_length)
         trf_vq_out = self.vq.lookup(emb_ids_flat)
 
         trf_vq_out = trf_vq_out.transpose(-1, -2)
