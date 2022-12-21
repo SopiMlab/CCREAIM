@@ -101,7 +101,7 @@ hyper:
     # block_m_conv: ??? # 1.0
     # block_dilation_growth_rate: ??? #3
     # block_dilation_cycle: null
-  vqvae:
+  vqvae: null
     # num_embeddings: 4
     # beta: 0.02
     # reset_patience: 10

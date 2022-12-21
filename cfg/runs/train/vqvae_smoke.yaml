@@ -5,6 +5,8 @@ process:
 
 logging:
   exp_name: smoke
+  save_pred: true
+  save_one_per_batch: false
 
 data:
   data_tar: /scratch/other/sopi/CCREAIM/datasets/test/out/chopped_65536.tar

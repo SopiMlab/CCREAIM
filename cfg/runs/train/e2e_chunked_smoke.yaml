@@ -7,6 +7,7 @@ logging:
   exp_name: smoke
   checkpoint: 50
   save_pred: true
+  save_one_per_batch: true
 
 data:
   data_tar: /scratch/other/sopi/CCREAIM/datasets/test/out/chopped_65536.tar
