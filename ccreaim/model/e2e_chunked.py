@@ -213,7 +213,7 @@ class E2EChunkedVQVAE(nn.Module):
             -1, self.seq_num, self.enc_out_length, self.latent_dim
         )
         # Transform to probability over tokens
-        emb_ids_prob = F.softmax(self.trf_out_to_tokens(trf_out))
+        emb_ids_prob = self.trf_out_to_tokens(trf_out)
 
         # VQ lookup
         emb_ids = emb_ids_prob.argmax(-1)
