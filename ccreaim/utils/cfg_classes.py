@@ -94,6 +94,7 @@ class TransformerConfig:
     num_enc_layers: int
     num_dec_layers: int
     autoregressive_loss_weight: float
+    linear_map: bool
 
 
 @dataclass

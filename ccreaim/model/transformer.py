@@ -59,6 +59,8 @@ class Transformer(nn.Module):
         num_encoder_layers: int,
         num_decoder_layers: int,
         dropout_p: float,
+        linear_map: bool = False,
+        num_embeddings: int = 0,
     ):
         super().__init__()
 
@@ -74,6 +76,11 @@ class Transformer(nn.Module):
             dropout=dropout_p,
             batch_first=True,
         )
+
+        if linear_map:
+            self.trf_out_to_tokens = nn.Linear(dim_model, num_embeddings)
+        else:
+            self.trf_out_to_tokens = nn.Identity()
 
     def forward(
         self,
@@ -95,7 +102,7 @@ class Transformer(nn.Module):
         tgt = self.positional_encoder(tgt)
 
         # Transformer blocks - Out size = (batch_size, sequence length, num_tokens)
-        out = self.transformer(
+        trf_out = self.transformer(
             src,
             tgt,
             tgt_mask=tgt_mask,
@@ -106,6 +113,7 @@ class Transformer(nn.Module):
             memory_key_padding_mask=memory_key_padding_mask,
         )
 
+        out = self.trf_out_to_tokens(trf_out)
         return out
 
     def get_tgt_mask(self, size: int) -> torch.Tensor:
@@ -126,6 +134,8 @@ def get_transformer(hyper_cfg: HyperConfig) -> Transformer:
             num_encoder_layers=hyper_cfg.transformer.num_enc_layers,
             num_decoder_layers=hyper_cfg.transformer.num_dec_layers,
             dropout_p=0.1,
+            linear_map=hyper_cfg.transformer.linear_map,
+            num_embeddings=hyper_cfg.vqvae.num_embeddings,
         )
     else:
         raise ValueError(f"Transformer model not implemented: {hyper_cfg.model}")

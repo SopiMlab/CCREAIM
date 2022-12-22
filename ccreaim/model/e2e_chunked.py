@@ -140,7 +140,6 @@ class E2EChunkedVQVAE(nn.Module):
         latent_dim: int,
         seq_num: int,
         enc_out_length: int,
-        num_tokens: int,
     ):
         super().__init__()
         self.encoder = encoder
@@ -152,7 +151,6 @@ class E2EChunkedVQVAE(nn.Module):
         self.seq_num = seq_num
         self.enc_out_length = enc_out_length
         self.shift_amount = self.enc_out_length
-        self.trf_out_to_tokens = nn.Linear(latent_dim, num_tokens)
 
     def forward(
         self, data: torch.Tensor, key_pad_mask: torch.Tensor
@@ -210,13 +208,11 @@ class E2EChunkedVQVAE(nn.Module):
             tgt_key_padding_mask=tgt_key_pad_mask,
         )
         trf_out = trf_out_flat.view(
-            -1, self.seq_num, self.enc_out_length, self.latent_dim
+            -1, self.seq_num, self.enc_out_length, self.vq.K  # num_embeddings
         )
-        # Transform to probability over tokens
-        emb_ids_prob = self.trf_out_to_tokens(trf_out)
 
         # VQ lookup
-        emb_ids = emb_ids_prob.argmax(-1)
+        emb_ids = trf_out.argmax(-1)
         emb_ids_flat = emb_ids.view(-1, self.enc_out_length)
         trf_vq_out = self.vq.lookup(emb_ids_flat)
 
@@ -229,7 +225,7 @@ class E2EChunkedVQVAE(nn.Module):
             enc_out,
             vq_out,
             vq_inds,
-            emb_ids_prob,
+            trf_out,
         )
 
     def generate(
@@ -268,9 +264,8 @@ class E2EChunkedVQVAE(nn.Module):
             tgt_mask = tgt_mask.to(tgt.device)
             trf_out_flat = self.trf(src, tgt, tgt_mask=tgt_mask)
             trf_pred = trf_out_flat[:, -1:, :]
-            emb_ids_prob = F.softmax(self.trf_out_to_tokens(trf_pred))
             # VQ lookup
-            emb_ids = emb_ids_prob.argmax(-1)
+            emb_ids = trf_pred.argmax(-1)
             emb_ids_flat = emb_ids.flatten(0, 1)
             trf_vq_out = self.vq.lookup(emb_ids_flat)
             tgt = torch.cat([tgt, trf_vq_out.unsqueeze(0)], dim=1)
@@ -302,6 +297,7 @@ def _create_e2e_chunked_ae(hyper_cfg: HyperConfig) -> E2EChunked:
         num_encoder_layers=hyper_cfg.transformer.num_enc_layers,
         num_decoder_layers=hyper_cfg.transformer.num_dec_layers,
         dropout_p=0.1,
+        linear_map=False,
     )
     return E2EChunked(
         encoder,
@@ -328,6 +324,7 @@ def _create_e2e_chunked_res_ae(hyper_cfg: HyperConfig) -> E2EChunked:
         num_encoder_layers=hyper_cfg.transformer.num_enc_layers,
         num_decoder_layers=hyper_cfg.transformer.num_dec_layers,
         dropout_p=0.1,
+        linear_map=False,
     )
 
     if hyper_cfg.pre_trained_model_path is not None:
@@ -356,6 +353,8 @@ def _create_e2e_chunked_res_vqvae(hyper_cfg: HyperConfig) -> E2EChunkedVQVAE:
         num_encoder_layers=hyper_cfg.transformer.num_enc_layers,
         num_decoder_layers=hyper_cfg.transformer.num_dec_layers,
         dropout_p=0.1,
+        linear_map=hyper_cfg.transformer.linear_map,
+        num_embeddings=hyper_cfg.vqvae.num_embeddings,
     )
     vq = vqvae.VectorQuantizer(
         hyper_cfg.vqvae.num_embeddings,
@@ -377,7 +376,6 @@ def _create_e2e_chunked_res_vqvae(hyper_cfg: HyperConfig) -> E2EChunkedVQVAE:
         latent_dim,
         hyper_cfg.num_seq,
         encoder_output_length,
-        hyper_cfg.vqvae.num_embeddings,
     )
 
 
