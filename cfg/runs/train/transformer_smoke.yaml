@@ -5,14 +5,28 @@ process:
 
 logging:
   exp_name: smoke
+  checkpoint: 10
+  save_pred: true
+  save_one_per_batch: false
 
 data:
   data_tar: ???
 
 hyper:
   model: transformer
+  latent_dim: 8
   seed: 0
-  seq_len: 1000
+  seq_len: 128
   epochs: 5
-  batch_size: 8
+  batch_size: 16
   learning_rate: 1e-4
+  transformer:
+    num_heads_latent_dimension_div: 1
+    num_enc_layers: 1
+    num_dec_layers: 1
+    autoregressive_loss_weight: 1
+    linear_map: true
+  vqvae:
+    num_embeddings: 256
+    beta: 0
+    reset_patience: -1
