@@ -7,12 +7,10 @@ from typing import Union
 
 import torch
 import torchaudio
-from hydra.core.hydra_config import HydraConfig
 from torch.nn import functional as F
 from torch.utils import data
 
 from ..utils import util
-from ..utils.cfg_classes import LoggingConfig
 
 log = logging.getLogger(__name__)
 
@@ -90,10 +88,17 @@ class FeatureDataset(data.Dataset):
         self.ext = ext
         self.sample_path_list = util.get_sample_path_list(self.data_root, self.ext)
 
-    def __getitem__(self, index: int) -> tuple[torch.Tensor, str]:
+    def __getitem__(
+        self, index: int
+    ) -> Union[tuple[torch.Tensor, str, torch.Tensor], tuple[torch.Tensor, str]]:
         file_name = str(self.sample_path_list[index])
-        feature = torch.load(file_name, map_location="cpu")
-        return feature.squeeze().T, file_name
+        sample = torch.load(file_name, map_location="cpu")
+        feature = sample["feature"]
+        if "embedding_indicies" in sample:
+            inds = sample["embedding_indicies"]
+            return feature.squeeze().T, file_name, inds.squeeze()
+        else:
+            return feature.squeeze().T, file_name
 
     def __len__(self):
         return len(self.sample_path_list)
