@@ -152,8 +152,8 @@ def load_pre_trained_ae(
         out_encoder = tmp_ae.encoder
         out_decoder = tmp_ae.decoder
         if hyper_cfg.freeze_pre_trained:
-            encoder.requires_grad_(False)
-            decoder.requires_grad_(False)
+            out_encoder.requires_grad_(False)
+            out_decoder.requires_grad_(False)
         return out_encoder, out_decoder
     else:
         raise ValueError(
