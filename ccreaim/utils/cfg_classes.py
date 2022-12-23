@@ -103,7 +103,7 @@ class VQVAEConfig:
     beta: float
     # multiplier for reset threshold: 1 / (codebook_size * reset_patience)
     # non-positive values turn off codebook resetting
-    reset_patience: int
+    reset_patience: float
 
 
 @dataclass
