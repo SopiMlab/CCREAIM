@@ -1,5 +1,6 @@
 import logging
 import random
+import shutil
 import tarfile
 from pathlib import Path
 
@@ -110,8 +111,9 @@ def test(
         log.info(
             f"Copying encoder output from {str(tmp_encoder_output_tar_path)} to {cfg.logging.encoder_output}"
         )
-        tmp_encoder_output_tar_path.rename(
-            Path(cfg.logging.encoder_output) / tmp_encoder_output_tar_path.name
+        shutil.move(
+            tmp_encoder_output_tar_path,
+            Path(cfg.logging.encoder_output) / tmp_encoder_output_tar_path.name,
         )
 
     if cfg.logging.wandb:
