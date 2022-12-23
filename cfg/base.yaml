@@ -29,7 +29,7 @@ logging:
   save_one_per_batch: true
   pred_output: ${hydra:sweep.dir}/${hydra:sweep.subdir}/predictions
   save_encoder_output: false
-  encoder_output: ${hydra:sweep.dir}/${hydra:sweep.subdir}/encodings.tar
+  encoder_output: ${hydra:sweep.dir}/${hydra:sweep.subdir}/
 
 process:
   train: ???
