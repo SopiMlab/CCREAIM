@@ -152,8 +152,8 @@ def load_pre_trained_ae(
         out_encoder = tmp_ae.encoder
         out_decoder = tmp_ae.decoder
         if hyper_cfg.freeze_pre_trained:
-            encoder.requires_grad_(False)
-            decoder.requires_grad_(False)
+            out_encoder.requires_grad_(False)
+            out_decoder.requires_grad_(False)
         return out_encoder, out_decoder
     else:
         raise ValueError(
@@ -236,9 +236,9 @@ def load_pre_trained_vqvae(
         out_vq = tmp_vq.vq
         out_decoder = tmp_vq.decoder
         if hyper_cfg.freeze_pre_trained:
-            encoder.requires_grad_(False)
+            out_encoder.requires_grad_(False)
             # vq is frozen in operate by emedding.grad = 0
-            decoder.requires_grad_(False)
+            out_decoder.requires_grad_(False)
         return out_encoder, out_vq, out_decoder
     else:
         raise ValueError(
