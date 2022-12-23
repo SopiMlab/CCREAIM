@@ -1,0 +1,39 @@
+# @package _global_
+process:
+  train: false
+  cross_val_k: 0
+
+logging:
+  exp_name: system_test
+  wandb: false
+  save_pred: false
+  save_one_per_batch: true
+  save_encoder_output: true
+  load_model_path: /home/baffyb1/CCREAIM/CCREAIM/logs/2022-12-21/res-vqvae_train_11-32-52/2/checkpoints/res-vqvae_seqlen-4096_bs-128_lr-0.0001_seed-0_final.pt
+
+data:
+  data_tar: /scratch/other/sopi/CCREAIM/datasets/chopped_4096.tar
+
+hyper:
+  model: vq-vae
+  seed: 0
+  batch_size: 64
+  seq_len: 4096
+
+resources:
+  num_workers: 2
+  # General resource configs
+  timeout_min: 60
+  cpus_per_task: null
+  gpus_per_node: null
+  tasks_per_node: 1
+  mem_gb: 8
+  nodes: 1
+
+  # Slurm resource configs
+  gres: null
+  cpus_per_gpu: 2
+  gpus_per_task: 1
+  mem_per_gpu: null
+  mem_per_cpu: null
+  max_num_timeout: 0

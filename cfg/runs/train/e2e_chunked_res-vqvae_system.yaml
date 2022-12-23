@@ -24,8 +24,7 @@ hyper:
     num_heads_latent_dimension_div: 4
     num_enc_layers: 1
     num_dec_layers: 1
-    autoregressive_loss_weight: 0
-  learning_rate: 1e-5
+    linear_map: true
   spectral_loss:
     weight: 1e-3
     stft_bins:

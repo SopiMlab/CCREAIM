@@ -29,7 +29,7 @@ logging:
   save_one_per_batch: true
   pred_output: ${hydra:sweep.dir}/${hydra:sweep.subdir}/predictions
   save_encoder_output: false
-  encoder_output: /scratch/other/sopi/CCREAIM/datasets/test/out/enc
+  encoder_output: ${hydra:sweep.dir}/${hydra:sweep.subdir}/encodings.tar
 
 process:
   train: ???
@@ -84,6 +84,7 @@ hyper:
     # num_enc_layers: ???
     # num_dec_layers: ???
     # autoregressive_loss_weight: ???
+    # linear_map: ???
   kld_loss: null
     # weight: ???
   spectral_loss:  null

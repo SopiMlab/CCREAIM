@@ -40,7 +40,7 @@ def test(
         wandb.config.update({"time": cfg.logging.run_id})
 
     model.eval()
-    with torch.no_grad():
+    with torch.inference_mode():
         running_loss = torch.tensor(0.0)
         for batchnum, batch in enumerate(dataloader):
             loss, pred, _ = operate.step(model, batch, device, cfg.hyper)
@@ -66,10 +66,29 @@ def test(
                         )
 
             if cfg.logging.save_encoder_output:
-                feat = model.encode(seq)  # type: ignore
-                for f, n in zip(feat, batch[1]):
-                    save_path = Path(cfg.logging.encoder_output) / Path(n).stem
-                    torch.save(f.clone().cpu(), str(save_path) + ".pt")
+                seq, _ = batch
+                seq = seq.to(device)
+                pred = model.encode(seq)  # type: ignore
+                if isinstance(pred, tuple):
+                    feat = pred[0]
+                    inds = pred[1]
+                    for f, i, n in zip(feat, inds, batch[1]):
+                        f = f.clone().cpu()
+                        i = i.clone().cpu()
+                        util.save_to_tar(
+                            cfg.logging.encoder_output,
+                            {"feature": f, "embedding_indicies": i},
+                            str(Path(n).stem) + ".pt",
+                        )
+                else:
+                    feat = pred
+                    for f, n in zip(feat, batch[1]):
+                        f = f.clone().cpu()
+                        util.save_to_tar(
+                            cfg.logging.encoder_output,
+                            {"feature": f},
+                            str(Path(n).stem) + ".pt",
+                        )
 
             running_loss += loss.detach().cpu().item()
 
