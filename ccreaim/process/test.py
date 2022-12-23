@@ -43,7 +43,7 @@ def test(
     with torch.no_grad():
         running_loss = torch.tensor(0.0)
         for batchnum, batch in enumerate(dataloader):
-            loss, pred, _ = operate.step(model, batch, device, cfg.hyper)
+            loss, pred, _ = operate.step(model, batch, device, cfg.hyper, batchnum)
 
             if cfg.logging.save_pred:
                 save_root = Path(cfg.logging.pred_output)
