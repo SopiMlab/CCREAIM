@@ -18,7 +18,6 @@ log = logging.getLogger(__name__)
 
 
 def prepare_dataset_on_tmp(data_tar: str, seq_len: int) -> Path:
-    hc = HydraConfig.get()
     tmp_preparing = Path(f"/tmp/chopped_{seq_len}_preparing")
     tmp = Path(f"/tmp/chopped_{seq_len}")
     while tmp_preparing.exists():
