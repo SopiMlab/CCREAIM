@@ -70,6 +70,23 @@ def chop_dataset(in_root: str, out_tar_file_path: str, ext: str, sample_length: 
                         log.error(e)
 
 
+def save_to_tar(
+    out_tar: tarfile.TarFile,
+    data: dict[str, torch.Tensor],
+    data_name: str,
+):
+
+    with io.BytesIO() as buffer:
+        try:
+            torch.save(data, buffer)
+            buffer.seek(0)  # go to the beginning for reading the buffer
+            out_info = tarfile.TarInfo(name=data_name)
+            out_info.size = buffer.getbuffer().nbytes
+            out_tar.addfile(tarinfo=out_info, fileobj=buffer)
+        except Exception as e:
+            log.error(e)
+
+
 def save_model_prediction(model_name: str, pred: torch.Tensor, save_path: Path) -> None:
     try:
         if model_name == "transformer":
@@ -238,6 +255,7 @@ def load_pre_trained_vqvae(
         if hyper_cfg.freeze_pre_trained:
             out_encoder.requires_grad_(False)
             # vq is frozen in operate by emedding.grad = 0
+            vq.embedding.requires_grad_(False)
             out_decoder.requires_grad_(False)
         return out_encoder, out_vq, out_decoder
     else:

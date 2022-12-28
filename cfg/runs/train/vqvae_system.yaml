@@ -7,6 +7,7 @@ logging:
   exp_name: system
   checkpoint: 10
   save_pred: true
+  save_encoder_output: true
 
 data:
   data_tar: /scratch/other/sopi/CCREAIM/datasets/chopped_65536.tar

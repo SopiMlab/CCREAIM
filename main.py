@@ -56,9 +56,6 @@ def main(cfg: cfg_classes.BaseConfig):
 
     # Get the dataset, use audio data for any non-transformer model,
     # feature data for transformers
-
-    # Get the dataset, use audio data for any non-transformer model,
-    # feature data for transformers
     if cfg.hyper.model == "transformer":
         # Feature dataset
         data = dataset.FeatureDataset(tmp_data_root)
@@ -94,6 +91,7 @@ def main(cfg: cfg_classes.BaseConfig):
             shuffle=cfg.data.shuffle,
             num_workers=cfg.resources.num_workers,
         )
+        log.info(f"VALIDATION STARTED")
         test(model, dataloader, device, cfg)
 
 

@@ -30,9 +30,14 @@ class VQVAE(nn.Module):
         d = self.decoder(quantized_latents_res)
         return d, e, quantized_latents
 
+    def encode(self, data: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        e = self.encoder(data)
+        quantized_latents, vq_inds = self.vq(e)
+        return quantized_latents, vq_inds
+
 
 class VectorQuantizer(nn.Module):
-    def __init__(self, num_embeddings: int, embedding_dim: int, reset_patience: int):
+    def __init__(self, num_embeddings: int, embedding_dim: int, reset_patience: float):
         super().__init__()
         self.K = num_embeddings
         self.D = embedding_dim

@@ -249,9 +249,9 @@ class E2EChunkedVQVAE(nn.Module):
             -1, in_chunks, self.enc_out_length, self.latent_dim
         )
         enc_out_flat = enc_out.flatten(1, 2)  # merge into sequence of vectors
-
         # VQ
-        quantized_enc = self.vq(enc_out_flat.transpose(-1, -2)).transpose(-1, -2)
+        quantized_enc, _ = self.vq(enc_out_flat.transpose(-1, -2))
+        quantized_enc = quantized_enc.transpose(-1, -2)
 
         src = quantized_enc
         if feed_in_tokens == 0:

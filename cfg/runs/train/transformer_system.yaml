@@ -7,13 +7,23 @@ logging:
   exp_name: system
 
 data:
-  data_root: /scratch/other/sopi/CCREAIM/datasets/magna-tag-a-tune_enc_lr1e-4
+  data_root: ???
 
 hyper:
   model: transformer
-  seq_len: 65536
+  seq_len: 128
   seed: 0
   latent_dim: 16
   epochs: 100
   batch_size: 8
   learning_rate: 1e-3
+  transformer:
+    num_heads_latent_dimension_div: 1
+    num_enc_layers: 1
+    num_dec_layers: 1
+    autoregressive_loss_weight: 1
+    linear_map: true
+  vqvae:
+    num_embeddings: 256
+    beta: 0
+    reset_patience: -1

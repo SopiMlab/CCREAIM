@@ -25,6 +25,7 @@ hyper:
     num_enc_layers: 1
     num_dec_layers: 1
     autoregressive_loss_weight: 0
+    linear_map: false
   learning_rate: 1e-5
   spectral_loss:
     weight: 1e-3
