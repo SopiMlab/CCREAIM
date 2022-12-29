@@ -50,9 +50,7 @@ def main(cfg: cfg_classes.BaseConfig):
     # Use gpu if available, move the model to device
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
-    tmp_data_root = dataset.prepare_dataset_on_tmp(
-        data_tar=cfg.data.data_tar, seq_len=cfg.hyper.seq_len
-    )
+    tmp_data_root = dataset.prepare_dataset_on_tmp(data_tar=cfg.data.data_tar)
 
     # Get the dataset, use audio data for any non-transformer model,
     # feature data for transformers
