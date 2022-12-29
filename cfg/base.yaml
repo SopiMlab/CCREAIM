@@ -30,6 +30,11 @@ logging:
   pred_output: ${hydra:sweep.dir}/${hydra:sweep.subdir}/predictions
   save_encoder_output: false
   encoder_output: ${hydra:sweep.dir}/${hydra:sweep.subdir}/
+  save_transformer_training_data: false
+  transformer_training_data_tar_orig: ???
+  transformer_training_data_tar_out: ${hydra:sweep.dir}/${hydra:sweep.subdir}/
+  transformer_training_num_seq: ???
+
 
 process:
   train: ???

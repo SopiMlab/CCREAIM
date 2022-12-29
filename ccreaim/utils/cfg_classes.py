@@ -18,6 +18,10 @@ class LoggingConfig:
     pred_output: str
     save_encoder_output: bool
     encoder_output: str
+    save_transformer_training_data: bool
+    transformer_training_data_tar_orig: str
+    transformer_training_data_tar_out: str
+    transformer_training_data_num_seq: int
 
 
 @dataclass
