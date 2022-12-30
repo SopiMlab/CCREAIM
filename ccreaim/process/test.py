@@ -93,7 +93,7 @@ def test(
                         i = i.clone().cpu()
                         util.save_to_tar(
                             tmp_encoder_output_tar,
-                            {"feature": f, "embedding_indicies": i},
+                            {"feature": f.T, "embedding_indicies": i},
                             str(Path(n).stem) + ".pt",
                         )
                 else:
@@ -102,7 +102,7 @@ def test(
                         f = f.clone().cpu()
                         util.save_to_tar(
                             tmp_encoder_output_tar,
-                            {"feature": f},
+                            {"feature": f.T},
                             str(Path(n).stem) + ".pt",
                         )
 
@@ -136,7 +136,7 @@ def test(
 
         encoder_output_length = ae.res_encoder_output_seq_length(cfg.hyper)
         tmp_chunked_features_tar_path = Path(
-            f"/tmp/transformer_training_data_seqlen-{cfg.hyper.seq_len}_numseq-{cfg.logging.transformer_training_num_seq}_num-embeddings-{cfg.hyper.vqvae.num_embeddings}_{cfg.logging.run_id}.tar"
+            f"/tmp/transformer_training_data_seqlen-{cfg.hyper.seq_len}_numseq-{cfg.logging.transformer_training_num_seq}_latent-dim-{cfg.hyper.latent_dim}_num-embeddings-{cfg.hyper.vqvae.num_embeddings}_{cfg.logging.run_id}.tar"
         )
         log.info(
             f"Opening chunked features tar at: {str(tmp_chunked_features_tar_path)}"

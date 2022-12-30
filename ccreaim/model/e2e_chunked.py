@@ -287,7 +287,7 @@ class E2EChunkedVQVAE(nn.Module):
 def prepare_data_for_transformer(
     data, encoder, vq, seq_len, num_seq, enc_out_length, latent_dim
 ):
-
+    data_orig = data
     data = data.view(-1, 1, seq_len)
     enc_out_batch = encoder(data)
     enc_out_batch = enc_out_batch.transpose(-1, -2)

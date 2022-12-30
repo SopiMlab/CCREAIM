@@ -77,6 +77,9 @@ def main(cfg: cfg_classes.BaseConfig):
         hyper_cfg_schema = OmegaConf.structured(cfg_classes.HyperConfig)
         conf = OmegaConf.create(checkpoint["hyper_config"])
         cfg.hyper = OmegaConf.merge(hyper_cfg_schema, conf)
+        log.info(
+            f"Loading model with the following cfg.hyper:\n{OmegaConf.to_yaml(cfg.hyper)}"
+        )
         get_model = operate.get_model_init_function(cfg.hyper)
         model = get_model()
         model.load_state_dict(model_state_dict)

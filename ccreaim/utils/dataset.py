@@ -100,9 +100,9 @@ class FeatureDataset(data.Dataset):
         feature = sample["feature"]
         if "embedding_indicies" in sample:
             inds = sample["embedding_indicies"]
-            return feature.squeeze().T, file_name, inds.squeeze()
+            return feature.squeeze(), file_name, inds.squeeze()
         else:
-            return feature.squeeze().T, file_name
+            return feature.squeeze(), file_name
 
     def __len__(self):
         return len(self.sample_path_list)
