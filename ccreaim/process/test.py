@@ -149,6 +149,7 @@ def test(
                 if batchnum % 100 == 0:
                     log.info(f"batch: {batchnum:05d}/{len(chunked_dataloader):05d}")
                 seq, _, _ = batch
+                seq = seq.to(device)
                 vq_flat, vq_inds = prepare_data_for_transformer(
                     seq,
                     model.encoder,
