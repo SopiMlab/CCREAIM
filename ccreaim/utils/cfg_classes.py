@@ -13,6 +13,10 @@ class LoggingConfig:
     save_one_per_batch: bool
     pred_output: str
     save_encoder_output: bool
+    transformer_training_data_tar_orig: str
+    transformer_training_data_tar_out: str
+    transformer_training_data_num_seq: int
+    save_transformer_training_data: bool
     encoder_output: str
     # Saved model destination
     model_checkpoints: str

@@ -155,7 +155,6 @@ class E2EChunkedVQVAE(nn.Module):
     def forward(
         self, data: torch.Tensor, key_pad_mask: torch.Tensor
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-
         data = data.view(-1, 1, self.seq_length)
         enc_out_batch = self.encoder(data)
         enc_out_batch = enc_out_batch.transpose(-1, -2)
@@ -251,7 +250,8 @@ class E2EChunkedVQVAE(nn.Module):
         enc_out_flat = enc_out.flatten(1, 2)  # merge into sequence of vectors
 
         # VQ
-        quantized_enc = self.vq(enc_out_flat.transpose(-1, -2)).transpose(-1, -2)
+        quantized_enc, _ = self.vq(enc_out_flat.transpose(-1, -2))
+        quantized_enc = quantized_enc.transpose(-1, -2)
 
         src = quantized_enc
         if feed_in_tokens == 0:
@@ -282,6 +282,28 @@ class E2EChunkedVQVAE(nn.Module):
         dec_out = dec_out.squeeze()
         dec_out = dec_out.view(-1, gen_chunks, self.seq_length)
         return dec_out
+
+
+def prepare_data_for_transformer(
+    data, encoder, vq, seq_len, num_seq, enc_out_length, latent_dim
+):
+    data_orig = data
+    data = data.view(-1, 1, seq_len)
+    enc_out_batch = encoder(data)
+    enc_out_batch = enc_out_batch.transpose(-1, -2)
+    enc_out = enc_out_batch.view(-1, num_seq, enc_out_length, latent_dim)
+    enc_out_flat = enc_out.flatten(1, 2)  # merge into sequence of vectors
+
+    # VQ
+    quantized_latents, vq_inds = vq(enc_out_flat.transpose(-1, -2))
+    vq_inds = vq_inds.view(-1, num_seq, enc_out_length)
+
+    quantized_latents = quantized_latents.transpose(-1, -2)
+    quantized_latents_res = enc_out_flat + (quantized_latents - enc_out_flat).detach()
+    vq_out = quantized_latents_res.view(-1, num_seq, enc_out_length, latent_dim)
+    vq_out_flat = vq_out.flatten(1, 2)  # merge into sequence of vectors
+
+    return vq_out_flat, vq_inds
 
 
 def _create_e2e_chunked_ae(hyper_cfg: HyperConfig) -> E2EChunked:

@@ -15,9 +15,10 @@ from ..utils import util
 log = logging.getLogger(__name__)
 
 
-def prepare_dataset_on_tmp(data_tar: str, seq_len: int) -> Path:
-    tmp_preparing = Path(f"/tmp/chopped_{seq_len}_preparing")
-    tmp = Path(f"/tmp/chopped_{seq_len}")
+def prepare_dataset_on_tmp(data_tar: str) -> Path:
+    dir_name = Path(data_tar).stem
+    tmp_preparing = Path(f"/tmp/{dir_name}_preparing")
+    tmp = Path(f"/tmp/{dir_name}")
     while tmp_preparing.exists():
         log.info(
             f"{str(tmp_preparing)} exists on the filesystem, waiting for data preparation"
@@ -31,10 +32,13 @@ def prepare_dataset_on_tmp(data_tar: str, seq_len: int) -> Path:
         log.info(f"Copying data tar to: {tmp_preparing}")
         tmp_data_tar_path = shutil.copy2(data_tar, tmp_preparing)
         with tarfile.open(tmp_data_tar_path, "r") as tmp_data_tar:
-            log.info(f"Extracting files")
+            log.info(f"Extracting files from {data_tar} to {str(tmp_preparing)}")
             tmp_data_tar.extractall(tmp_preparing)
         Path(tmp_data_tar_path).unlink()
         tmp_preparing.rename(tmp)
+        log.info(
+            f"Data preparation complete, renamed {str(tmp_preparing)} => {str(tmp)}"
+        )
         return tmp
 
 
@@ -96,9 +100,9 @@ class FeatureDataset(data.Dataset):
         feature = sample["feature"]
         if "embedding_indicies" in sample:
             inds = sample["embedding_indicies"]
-            return feature.squeeze().T, file_name, inds.squeeze()
+            return feature.squeeze(), file_name, inds.squeeze()
         else:
-            return feature.squeeze().T, file_name
+            return feature.squeeze(), file_name
 
     def __len__(self):
         return len(self.sample_path_list)
