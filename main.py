@@ -73,15 +73,26 @@ def main(cfg: cfg_classes.BaseConfig):
         cross_validation(data, device, cfg)
     else:
         # Fetch the model:
-        # testing load an existing trained one
-        checkpoint = torch.load(cfg.logging.load_model_path, map_location="cpu")
-        model_state_dict = checkpoint["model_state_dict"]
-        hyper_cfg_schema = OmegaConf.structured(cfg_classes.HyperConfig)
-        conf = OmegaConf.create(checkpoint["hyper_config"])
-        cfg.hyper = OmegaConf.merge(hyper_cfg_schema, conf)
+        # testing load an existing trained ones
+        if (
+            cfg.logging.load_model_path is None
+            and cfg.hyper.pre_trained_ae_path is None
+            and cfg.hyper.pre_trained_vqvae_path is None
+            and cfg.hyper.pre_trained_transformer_path is None
+        ):
+            raise ValueError("No trained model path specified for testing.")
+
+        if cfg.logging.load_model_path is not None:
+            checkpoint = torch.load(cfg.logging.load_model_path, map_location="cpu")
+            model_state_dict = checkpoint["model_state_dict"]
+            hyper_cfg_schema = OmegaConf.structured(cfg_classes.HyperConfig)
+            conf = OmegaConf.create(checkpoint["hyper_config"])
+            cfg.hyper = OmegaConf.merge(hyper_cfg_schema, conf)
         get_model = operate.get_model_init_function(cfg.hyper)
         model = get_model()
-        model.load_state_dict(model_state_dict)
+        if cfg.logging.load_model_path is not None:
+            model.load_state_dict(model_state_dict)
+            log.info(f"Loaded model weights from {cfg.logging.load_model_path}")
         model = model.to(device)
 
         # Make a dataloader

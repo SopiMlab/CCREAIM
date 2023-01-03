@@ -22,7 +22,7 @@ logging:
   run_id: ${now:%Y-%m-%d}-${now:%H-%M-%S}-${hydra:job.num}
   # Saved model destination
   model_checkpoints: ${hydra:sweep.dir}/${hydra:sweep.subdir}/checkpoints
-  load_model_path: ???
+  load_model_path: null
   checkpoint: 5
   # Output saving
   save_pred: false
@@ -78,7 +78,9 @@ hyper:
   learning_rate: ???
   lr_scheduler_gamma: 1.0
   freeze_pre_trained: false
-  pre_trained_model_path: null
+  pre_trained_ae_path: null
+  pre_trained_vqvae_path: null
+  pre_trained_transformer_path: null
   transformer: null
     # num_heads_latent_dimension_div: ???
     # num_enc_layers: ???
