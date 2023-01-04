@@ -22,6 +22,7 @@ def step(
     if isinstance(model, transformer.Transformer):
         seq, _, inds = batch
         seq = seq.to(device)
+        inds = inds.to(device)
         src = seq
         tgt = torch.cat(
             (
@@ -40,6 +41,34 @@ def step(
             trf_auto = F.cross_entropy(pred, inds)
         else:
             trf_auto = F.mse_loss(pred, src)
+
+        if batchnum % 2000 == 0:
+            vq_inds = inds
+            log.info(f"vq_inds: {vq_inds}")
+            trf_inds_prob = pred
+            trf_inds = trf_inds_prob.argmax(-1)
+            log.info(f"trf_inds: {trf_inds}")
+            vq_inds_counts = dict()
+            for i in torch.flatten(vq_inds):
+                vq_inds_counts[i.item()] = vq_inds_counts.get(i.item(), 0) + 1
+            trf_inds_counts = dict()
+            for i in torch.flatten(trf_inds):
+                trf_inds_counts[i.item()] = trf_inds_counts.get(i.item(), 0) + 1
+
+            vq_sorted = {
+                k: v
+                for k, v in sorted(
+                    vq_inds_counts.items(), key=lambda item: item[1], reverse=True
+                )
+            }
+            trf_sorted = {
+                k: v
+                for k, v in sorted(
+                    trf_inds_counts.items(), key=lambda item: item[1], reverse=True
+                )
+            }
+            log.info(f"Counts of specific indices in vq_inds: {vq_sorted}")
+            log.info(f"Counts of specific indices in trf_inds: {trf_sorted}")
 
         loss = trf_auto
 
