@@ -72,7 +72,7 @@ class Audio8BitDataset(data.Dataset):
         waveform, _ = torchaudio.load(file_name, format=self.ext, normalize=False)  # type: ignore
         waveform = waveform.squeeze()
         padded_waveform = F.pad(waveform, (0, self.seq_len - waveform.size(0)), value=0)
-        return padded_waveform.unsqueeze(0), file_name
+        return padded_waveform, file_name
 
     def __len__(self):
         return len(self.sample_path_list)

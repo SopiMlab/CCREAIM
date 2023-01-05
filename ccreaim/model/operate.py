@@ -20,22 +20,23 @@ def step(
     info: dict[str, float] = {}
     if isinstance(model, transformer.Transformer):
         seq, _ = batch
-        seq = seq.to(device)
-        src = seq
+        seq = seq.squeeze().to(device)
+        src = F.one_hot(seq.long(), num_classes=hyper_cfg.vqvae.num_embeddings).int()
+        src = src.to(device)
         tgt = torch.cat(
             (
-                torch.zeros_like(seq[:, 0:1, :], device=seq.device),
-                seq[:, :-1, :],
+                torch.zeros_like(src[:, 0:1, :], device=src.device),
+                src[:, :-1, :],
             ),
             dim=1,
         )
+        tgt[0, 0, 0] = 1
         tgt_mask = model.get_tgt_mask(tgt.size(1))
         tgt_mask = tgt_mask.to(device)
         pred = model(src, tgt, tgt_mask=tgt_mask)
         if hyper_cfg.transformer.linear_map:
             pred = pred.view(-1, hyper_cfg.vqvae.num_embeddings)
-            correct_pred = seq[:, :, -1]
-            trf_auto = F.cross_entropy(pred, correct_pred.squeeze())
+            trf_auto = F.cross_entropy(pred, seq.view(-1))
         else:
             trf_auto = F.mse_loss(pred, src)
 
