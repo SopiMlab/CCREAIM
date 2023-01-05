@@ -10,7 +10,7 @@ import torch
 import torchaudio
 from omegaconf import OmegaConf
 
-from ..model import ae, vqvae
+from ..model import ae, transformer, vqvae
 from .cfg_classes import BaseConfig, HyperConfig, SpectralLossConfig
 
 log = logging.getLogger(__name__)
@@ -143,7 +143,7 @@ def get_model_path(cfg: BaseConfig):
 def load_pre_trained_ae(
     hyper_cfg: HyperConfig, encoder: ae.ResEncoder, decoder: ae.ResDecoder
 ) -> tuple[ae.ResEncoder, ae.ResDecoder]:
-    checkpoint = torch.load(hyper_cfg.pre_trained_model_path, map_location="cpu")
+    checkpoint = torch.load(hyper_cfg.pre_trained_ae_path, map_location="cpu")
     pretrained_state_dict = checkpoint["model_state_dict"]
     hyper_cfg_schema = OmegaConf.structured(HyperConfig)
     conf = OmegaConf.create(checkpoint["hyper_config"])
@@ -168,9 +168,11 @@ def load_pre_trained_ae(
         tmp_ae.load_state_dict(pretrained_state_dict)
         out_encoder = tmp_ae.encoder
         out_decoder = tmp_ae.decoder
+        log.info(f"Loaded AE weights from {hyper_cfg.pre_trained_ae_path}")
         if hyper_cfg.freeze_pre_trained:
             out_encoder.requires_grad_(False)
             out_decoder.requires_grad_(False)
+            log.info("Froze AE encoder and decoder weights.")
         return out_encoder, out_decoder
     else:
         raise ValueError(
@@ -225,7 +227,7 @@ def load_pre_trained_vqvae(
     vq: vqvae.VectorQuantizer,
     decoder: ae.ResDecoder,
 ) -> tuple[ae.ResEncoder, vqvae.VectorQuantizer, ae.ResDecoder]:
-    checkpoint = torch.load(hyper_cfg.pre_trained_model_path, map_location="cpu")
+    checkpoint = torch.load(hyper_cfg.pre_trained_vqvae_path, map_location="cpu")
     pretrained_state_dict = checkpoint["model_state_dict"]
     hyper_cfg_schema = OmegaConf.structured(HyperConfig)
     conf = OmegaConf.create(checkpoint["hyper_config"])
@@ -252,11 +254,13 @@ def load_pre_trained_vqvae(
         out_encoder = tmp_vq.encoder
         out_vq = tmp_vq.vq
         out_decoder = tmp_vq.decoder
+        log.info(f"Loaded VQ-VAE weights from {hyper_cfg.pre_trained_vqvae_path}")
         if hyper_cfg.freeze_pre_trained:
             out_encoder.requires_grad_(False)
             # vq is frozen in operate by emedding.grad = 0
             vq.embedding.requires_grad_(False)
             out_decoder.requires_grad_(False)
+            log.info("Froze VQ-VAE encoder and decoder weights.")
         return out_encoder, out_vq, out_decoder
     else:
         raise ValueError(
@@ -306,6 +310,71 @@ def load_pre_trained_vqvae(
             f"{hyper_cfg.vqvae.num_embeddings}"
             "\t---\t"
             f"{pretrained_hyper_cfg.vqvae.num_embeddings}\n"
+        )
+
+
+def load_pre_trained_transformer(
+    hyper_cfg: HyperConfig, trf: transformer.Transformer
+) -> transformer.Transformer:
+    checkpoint = torch.load(hyper_cfg.pre_trained_transformer_path, map_location="cpu")
+    pretrained_state_dict = checkpoint["model_state_dict"]
+    hyper_cfg_schema = OmegaConf.structured(HyperConfig)
+    conf = OmegaConf.create(checkpoint["hyper_config"])
+    pretrained_hyper_cfg = OmegaConf.merge(hyper_cfg_schema, conf)
+
+    if (
+        hyper_cfg.latent_dim == pretrained_hyper_cfg.latent_dim
+        and hyper_cfg.seq_len == pretrained_hyper_cfg.seq_len
+        and hyper_cfg.vqvae.num_embeddings == pretrained_hyper_cfg.vqvae.num_embeddings
+        and hyper_cfg.transformer.num_heads_latent_dimension_div
+        == pretrained_hyper_cfg.transformer.num_heads_latent_dimension_div
+        and hyper_cfg.transformer.num_enc_layers
+        == pretrained_hyper_cfg.transformer.num_enc_layers
+        and hyper_cfg.transformer.num_dec_layers
+        == pretrained_hyper_cfg.transformer.num_dec_layers
+        and hyper_cfg.transformer.linear_map
+        == pretrained_hyper_cfg.transformer.linear_map
+    ):
+        trf.load_state_dict(pretrained_state_dict)
+        log.info(
+            f"Loaded Transformer weights from {hyper_cfg.pre_trained_transformer_path}"
+        )
+        if hyper_cfg.freeze_pre_trained:
+            trf.requires_grad_(False)
+            log.info(f"Froze Transformer weights.")
+        return trf
+    else:
+        raise ValueError(
+            f"Pre-trained config is not matching current config:\n"
+            "\t\t\t\t\tCurrent config\t---\tPre-trained config\n"
+            "latent_dim:\t\t\t\t\t"
+            f"{hyper_cfg.latent_dim}"
+            "\t---\t"
+            f"{pretrained_hyper_cfg.latent_dim}\n"
+            "seq_len:\t\t\t\t\t"
+            f"{hyper_cfg.seq_len}"
+            "\t---\t"
+            f"{pretrained_hyper_cfg.seq_len}\n"
+            "vqvae.num_embeddings:\t\t\t\t"
+            f"{hyper_cfg.vqvae.num_embeddings}"
+            "\t---\t"
+            f"{pretrained_hyper_cfg.vqvae.num_embeddings}\n"
+            "transformer.num_heads_latent_dimension_div: \t"
+            f"{hyper_cfg.transformer.num_heads_latent_dimension_div}"
+            "\t---\t"
+            f"{pretrained_hyper_cfg.transformer.num_heads_latent_dimension_div} \n"
+            "transformer.num_enc_layers: \t\t\t"
+            f"{hyper_cfg.transformer.num_enc_layers}"
+            "\t---\t"
+            f"{pretrained_hyper_cfg.transformer.num_enc_layers}\n"
+            "transformer.num_dec_layers: \t\t\t"
+            f"{hyper_cfg.transformer.num_dec_layers}"
+            "\t---\t"
+            f"{pretrained_hyper_cfg.transformer.num_dec_layers}\n"
+            "transformer.linear_map:\t\t\t\t"
+            f"{hyper_cfg.transformer.linear_map}"
+            "\t---\t"
+            f"{pretrained_hyper_cfg.transformer.linear_map}\n"
         )
 
 

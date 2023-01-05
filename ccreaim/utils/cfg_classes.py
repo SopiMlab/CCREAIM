@@ -8,20 +8,20 @@ class LoggingConfig:
     silent: bool
     exp_name: str
     run_id: str
-    # Saved model destination
-    model_checkpoints: str
-    load_model_path: str
-    checkpoint: int
     # Output saving
     save_pred: bool
     save_one_per_batch: bool
     pred_output: str
     save_encoder_output: bool
-    encoder_output: str
-    save_transformer_training_data: bool
     transformer_training_data_tar_orig: str
     transformer_training_data_tar_out: str
     transformer_training_data_num_seq: int
+    save_transformer_training_data: bool
+    encoder_output: str
+    # Saved model destination
+    model_checkpoints: str
+    checkpoint: int
+    load_model_path: Optional[str] = None
 
 
 @dataclass
@@ -119,13 +119,16 @@ class HyperConfig:
     # number of sequences for e2e_chunked, should be original audio length / seq_len
     num_seq: int
     # concatenation moe for e2e_chunked
-    seq_cat: bool
+    seq_cat: bool  # DEPRECATED
     epochs: int
     batch_size: int
     learning_rate: float
     lr_scheduler_gamma: float
     freeze_pre_trained: Optional[bool] = False
-    pre_trained_model_path: Optional[str] = None
+    pre_trained_model_path: Optional[str] = None  # DEPRECATED
+    pre_trained_ae_path: Optional[str] = None
+    pre_trained_vqvae_path: Optional[str] = None
+    pre_trained_transformer_path: Optional[str] = None
     kld_loss: Optional[KldLossConfig] = None
     spectral_loss: Optional[SpectralLossConfig] = None
     res_ae: Optional[ResAeConfig] = None

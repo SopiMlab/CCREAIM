@@ -348,8 +348,10 @@ def _create_e2e_chunked_res_ae(hyper_cfg: HyperConfig) -> E2EChunked:
         linear_map=False,
     )
 
-    if hyper_cfg.pre_trained_model_path is not None:
+    if hyper_cfg.pre_trained_ae_path is not None:
         encoder, decoder = util.load_pre_trained_ae(hyper_cfg, encoder, decoder)
+    if hyper_cfg.pre_trained_transformer_path is not None:
+        trf = util.load_pre_trained_transformer(hyper_cfg, trf)
 
     return E2EChunked(
         encoder,
@@ -383,10 +385,13 @@ def _create_e2e_chunked_res_vqvae(hyper_cfg: HyperConfig) -> E2EChunkedVQVAE:
         hyper_cfg.vqvae.reset_patience,
     )
 
-    if hyper_cfg.pre_trained_model_path is not None:
+    if hyper_cfg.pre_trained_vqvae_path is not None:
         encoder, vq, decoder = util.load_pre_trained_vqvae(
             hyper_cfg, encoder, vq, decoder
         )
+
+    if hyper_cfg.pre_trained_transformer_path is not None:
+        trf = util.load_pre_trained_transformer(hyper_cfg, trf)
 
     return E2EChunkedVQVAE(
         encoder,
