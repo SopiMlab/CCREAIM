@@ -19,7 +19,7 @@ def step(
 ) -> tuple[torch.Tensor, torch.Tensor, dict[str, float]]:
     info: dict[str, float] = {}
     if isinstance(model, transformer.Transformer):
-        seq, _, inds = batch
+        seq, _ = batch
         seq = seq.to(device)
         src = seq
         tgt = torch.cat(
@@ -32,11 +32,10 @@ def step(
         tgt_mask = model.get_tgt_mask(tgt.size(1))
         tgt_mask = tgt_mask.to(device)
         pred = model(src, tgt, tgt_mask=tgt_mask)
-
         if hyper_cfg.transformer.linear_map:
             pred = pred.view(-1, hyper_cfg.vqvae.num_embeddings)
-            inds = inds.view(-1)
-            trf_auto = F.cross_entropy(pred, inds)
+            correct_pred = seq[:, :, -1]
+            trf_auto = F.cross_entropy(pred, correct_pred.squeeze())
         else:
             trf_auto = F.mse_loss(pred, src)
 

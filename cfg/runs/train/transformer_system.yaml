@@ -5,20 +5,23 @@ process:
 
 logging:
   exp_name: system
+  checkpoint: 20
+  save_pred: false
+  save_one_per_batch: false
 
 data:
-  data_root: ???
+  data_tar: ???
 
 hyper:
   model: transformer
-  seq_len: 128
+  latent_dim: 8
   seed: 0
-  latent_dim: 16
-  epochs: 100
-  batch_size: 8
-  learning_rate: 1e-3
+  seq_len: 4096
+  epochs: 200
+  batch_size: 32
+  learning_rate: 1e-4
   transformer:
-    num_heads_latent_dimension_div: 1
+    num_heads_latent_dimension_div: 2
     num_enc_layers: 1
     num_dec_layers: 1
     autoregressive_loss_weight: 1

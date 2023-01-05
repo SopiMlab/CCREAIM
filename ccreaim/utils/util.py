@@ -58,8 +58,8 @@ def chop_dataset(in_root: str, out_tar_file_path: str, ext: str, sample_length: 
                             buffer,
                             cs.unsqueeze(0),
                             sample_rate,
-                            encoding="PCM_F",
-                            bits_per_sample=32,
+                            encoding="PCM_U",
+                            bits_per_sample=8,
                             format="wav",
                         )
                         buffer.seek(0)  # go to the beginning for reading the buffer

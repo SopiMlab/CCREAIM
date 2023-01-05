@@ -60,6 +60,24 @@ class AudioDataset(data.Dataset):
         return len(self.sample_path_list)
 
 
+class Audio8BitDataset(data.Dataset):
+    def __init__(self, data_root: Path, seq_len: int, ext: str = "wav"):
+        self.data_root = Path(data_root)
+        self.seq_len = seq_len
+        self.ext = ext
+        self.sample_path_list = util.get_sample_path_list(self.data_root, self.ext)
+
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, str]:
+        file_name = str(self.sample_path_list[index])
+        waveform, _ = torchaudio.load(file_name, format=self.ext, normalize=False)  # type: ignore
+        waveform = waveform.squeeze()
+        padded_waveform = F.pad(waveform, (0, self.seq_len - waveform.size(0)), value=0)
+        return padded_waveform.unsqueeze(0), file_name
+
+    def __len__(self):
+        return len(self.sample_path_list)
+
+
 class ChunkedAudioDataset(data.Dataset):
     def __init__(self, data_root: Path, seq_len: int, seq_num: int, ext: str = "wav"):
         self.data_root = Path(data_root)

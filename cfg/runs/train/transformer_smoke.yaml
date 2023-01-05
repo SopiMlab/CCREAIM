@@ -14,11 +14,11 @@ data:
 
 hyper:
   model: transformer
-  latent_dim: 8
+  latent_dim: 1600
   seed: 0
-  seq_len: 128
-  epochs: 5
-  batch_size: 16
+  seq_len: 1600
+  epochs: 20
+  batch_size: 32
   learning_rate: 1e-4
   transformer:
     num_heads_latent_dimension_div: 1
