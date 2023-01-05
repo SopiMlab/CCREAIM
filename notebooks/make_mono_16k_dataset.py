@@ -8,18 +8,18 @@ from torchaudio import functional as F
 
 from ccreaim.utils import util
 
-test_dataset = True
+test_dataset = False
 ext = "wav"
 
 input_root = (
     "/scratch/other/sopi/CCREAIM/datasets/test/in_maestro"
     if test_dataset
-    else "/scratch/other/sopi/CCREAIM/datasets/magna-tag-a-tune"
+    else "/scratch/other/sopi/CCREAIM/datasets/maestro-v3.0.0"
 )
 output_root = (
     "/scratch/other/sopi/CCREAIM/datasets/test/out_maestro"
     if test_dataset
-    else "/scratch/other/sopi/CCREAIM/datasets"
+    else "/scratch/other/sopi/CCREAIM/datasets/maestro_prepared"
 )
 
 sample_paths = util.get_sample_path_list(Path(input_root), ext)
