@@ -323,7 +323,6 @@ def load_pre_trained_transformer(
 
     if (
         hyper_cfg.latent_dim == pretrained_hyper_cfg.latent_dim
-        and hyper_cfg.seq_len == pretrained_hyper_cfg.seq_len
         and hyper_cfg.vqvae.num_embeddings == pretrained_hyper_cfg.vqvae.num_embeddings
         and hyper_cfg.transformer.num_heads_latent_dimension_div
         == pretrained_hyper_cfg.transformer.num_heads_latent_dimension_div
@@ -350,10 +349,6 @@ def load_pre_trained_transformer(
             f"{hyper_cfg.latent_dim}"
             "\t---\t"
             f"{pretrained_hyper_cfg.latent_dim}\n"
-            "seq_len:\t\t\t\t\t"
-            f"{hyper_cfg.seq_len}"
-            "\t---\t"
-            f"{pretrained_hyper_cfg.seq_len}\n"
             "vqvae.num_embeddings:\t\t\t\t"
             f"{hyper_cfg.vqvae.num_embeddings}"
             "\t---\t"
