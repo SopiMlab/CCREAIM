@@ -21,9 +21,7 @@ def step(
     if isinstance(model, transformer.Transformer):
         seq, _ = batch
         seq = seq.squeeze().to(device)
-        src = F.one_hot(
-            seq.long(), num_classes=(hyper_cfg.vqvae.num_embeddings + 1)
-        ).int()
+        src = F.one_hot(seq.long(), num_classes=256).int()
         src = src.to(device)
         tgt = torch.cat(
             (
@@ -32,7 +30,6 @@ def step(
             ),
             dim=1,
         )
-        tgt[:, 0, hyper_cfg.vqvae.num_embeddings] = 1
         tgt_mask = model.get_tgt_mask(tgt.size(1))
         tgt_mask = tgt_mask.to(device)
         pred = model(src, tgt, tgt_mask=tgt_mask)
