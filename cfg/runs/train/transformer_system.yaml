@@ -14,16 +14,16 @@ data:
 
 hyper:
   model: transformer
-  latent_dim: 8
+  latent_dim: 256
   seed: 0
-  seq_len: 4096
+  seq_len: 1600
   epochs: 200
   batch_size: 32
   learning_rate: 1e-4
   transformer:
-    num_heads_latent_dimension_div: 2
-    num_enc_layers: 1
-    num_dec_layers: 1
+    num_heads_latent_dimension_div: 64
+    num_enc_layers: 3
+    num_dec_layers: 3
     autoregressive_loss_weight: 1
     linear_map: true
   vqvae:
