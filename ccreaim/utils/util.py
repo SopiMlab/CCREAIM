@@ -108,7 +108,7 @@ def save_model_prediction(model_name: str, pred: torch.Tensor, save_path: Path) 
 
 
 def get_sample_path_list(data_root: Path, ext: str = "mp3") -> list[Path]:
-    return list(data_root.rglob(f"*.{ext}"))
+    return sorted(list(data_root.rglob(f"*.{ext}")))
 
 
 # Calculates padding for nn.Conv1d-layers to achieve l_out=ceil(l_in/stride)
