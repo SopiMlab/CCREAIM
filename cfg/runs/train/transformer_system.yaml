@@ -4,8 +4,8 @@ process:
   cross_val_k: 0
 
 logging:
-  exp_name: system
-  checkpoint: 20
+  exp_name: 8bit_system
+  checkpoint: 1
   save_pred: false
   save_one_per_batch: false
 
@@ -17,7 +17,7 @@ hyper:
   latent_dim: 256
   seed: 0
   seq_len: 1600
-  epochs: 200
+  epochs: 30
   batch_size: 32
   learning_rate: 1e-4
   transformer:
