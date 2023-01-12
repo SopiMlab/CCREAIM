@@ -1,0 +1,13 @@
+#!/bin/bash
+#SBATCH --time=03:59:59
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH --gpus-per-task=1
+#SBATCH --output=/scratch/other/sopi/CCREAIM/logs/out_%A_%a.txt
+##SBATCH --gres=gpu:v100:1
+#SBATCH --partition=gpushort
+
+module load miniconda
+source activate /scratch/other/sopi/conda/ccreaim
+
+srun python /home/baffyb1/CCREAIM/notebooks/test_8bit.py

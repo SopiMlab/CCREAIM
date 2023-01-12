@@ -4,6 +4,7 @@ from typing import Optional
 
 import torch
 from torch import nn
+from torch.nn import functional as F
 
 from ..utils.cfg_classes import HyperConfig
 
@@ -123,6 +124,55 @@ class Transformer(nn.Module):
         mask = mask.masked_fill(mask == 0, float("-inf"))  # Convert zeros to -inf
         mask = mask.masked_fill(mask == 1, float(0.0))  # Convert ones to 0
         return mask
+
+    def generate(
+        self, src: torch.Tensor, tgt: Optional[torch.Tensor], gen_tokens: int
+    ) -> torch.Tensor:
+
+        num_tokens = gen_tokens
+        if tgt is None:
+            tgt = torch.zeros_like(src[:, 0:1], device=src.device)
+            num_tokens -= 1
+
+        for _ in range(num_tokens):
+            tgt_mask = self.get_tgt_mask(tgt.size(1))
+            tgt_mask = tgt_mask.to(tgt.device)
+            trf_out_flat = self.forward(src, tgt, tgt_mask=tgt_mask)
+            trf_pred = trf_out_flat[:, -1:, :]
+            ids = trf_pred.argmax(-1)
+            ids_one_hot = F.one_hot(ids.long(), num_classes=256).int()
+            tgt = torch.cat([tgt, ids_one_hot], dim=1)
+
+        # Return the generated tokens
+        return tgt
+
+    def generate_chunks(
+        self,
+        audio: torch.Tensor,
+        src_chunk_size: int,
+        src_shift_size: int,
+        tgt_shift_size: int,
+    ) -> torch.Tensor:
+        num_chunks = audio.size(1) // src_shift_size
+        # gen = torch.zeros((src_chunk_size, num_chunks * tgt_shift_size, 256), device=audio.device)
+
+        src_chunk = audio[:, :src_chunk_size]
+        gen = self.generate(src_chunk, None, tgt_shift_size)
+        print(gen.size())
+        for chunk in range(num_chunks - 1):
+            src_chunk = audio[
+                :,
+                (chunk + 1) * src_shift_size : (chunk + 1) * src_shift_size
+                + src_chunk_size,
+            ]
+            tgt_chunk = gen[
+                :, chunk * tgt_shift_size : chunk * tgt_shift_size + tgt_shift_size
+            ]
+            gen_chunk = self.generate(src_chunk, tgt_chunk, tgt_shift_size)
+            gen_chunk = gen_chunk[:, tgt_shift_size:, :]
+            gen = torch.cat([gen, gen_chunk], dim=1)
+            print(gen.size())
+        return gen
 
 
 def get_transformer(hyper_cfg: HyperConfig) -> Transformer:
