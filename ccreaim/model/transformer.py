@@ -126,52 +126,50 @@ class Transformer(nn.Module):
         return mask
 
     def generate(
-        self, src: torch.Tensor, tgt: Optional[torch.Tensor], gen_tokens: int
-    ) -> torch.Tensor:
+        self, src: torch.Tensor, tgt: torch.Tensor, gen_tokens: int, first: bool
+    ) -> None:
 
-        num_tokens = gen_tokens
-        if tgt is None:
-            tgt = torch.zeros_like(src[:, 0:1], device=src.device)
-            num_tokens -= 1
+        for i in range(gen_tokens):
+            if not first:
+                tgt_chunk = tgt[:, : gen_tokens + i, :]
+            else:
+                tgt_chunk = tgt[:, : 1 + i, :]
 
-        for _ in range(num_tokens):
-            tgt_mask = self.get_tgt_mask(tgt.size(1))
-            tgt_mask = tgt_mask.to(tgt.device)
-            trf_out_flat = self.forward(src, tgt, tgt_mask=tgt_mask)
+            trf_out_flat = self.forward(src, tgt_chunk)
             trf_pred = trf_out_flat[:, -1:, :]
             ids = trf_pred.argmax(-1)
             ids_one_hot = F.one_hot(ids.long(), num_classes=256).int()
-            tgt = torch.cat([tgt, ids_one_hot], dim=1)
 
-        # Return the generated tokens
-        return tgt
+            if not first:
+                tgt[:, gen_tokens + i, :] = ids_one_hot
+            else:
+                tgt[:, 1 + i, :] = ids_one_hot
 
     def generate_chunks(
         self,
         audio: torch.Tensor,
-        src_chunk_size: int,
-        src_shift_size: int,
-        tgt_shift_size: int,
+        src_chunk: int,
+        src_shift: int,
+        tgt_chunk: int,
     ) -> torch.Tensor:
-        num_chunks = audio.size(1) // src_shift_size
-        # gen = torch.zeros((src_chunk_size, num_chunks * tgt_shift_size, 256), device=audio.device)
+        num_chunks = audio.size(1) // src_shift
+        gen = torch.zeros(
+            (audio.size(0), num_chunks * tgt_chunk + 1, 256), device=audio.device
+        )
 
-        src_chunk = audio[:, :src_chunk_size]
-        gen = self.generate(src_chunk, None, tgt_shift_size)
-        print(gen.size())
+        src = audio[:, :src_chunk, :]
+        tgt = gen[:, : tgt_chunk + 1, :]
+        self.generate(src, tgt, tgt_chunk, True)
+
         for chunk in range(num_chunks - 1):
-            src_chunk = audio[
+            src = audio[
                 :,
-                (chunk + 1) * src_shift_size : (chunk + 1) * src_shift_size
-                + src_chunk_size,
+                (chunk + 1) * src_shift : (chunk + 1) * src_shift + src_chunk,
             ]
-            tgt_chunk = gen[
-                :, chunk * tgt_shift_size : chunk * tgt_shift_size + tgt_shift_size
-            ]
-            gen_chunk = self.generate(src_chunk, tgt_chunk, tgt_shift_size)
-            gen_chunk = gen_chunk[:, tgt_shift_size:, :]
-            gen = torch.cat([gen, gen_chunk], dim=1)
-            print(gen.size())
+            tgt = gen[:, chunk * tgt_chunk : chunk * tgt_chunk + 2 * tgt_chunk]
+            self.generate(src, tgt, tgt_chunk, False)
+
+        gen = gen[:, 1:, :]
         return gen
 
 
