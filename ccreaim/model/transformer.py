@@ -183,6 +183,7 @@ class CachedTransformerDecoder(nn.TransformerDecoder):
         tgt: torch.Tensor,
         memory: torch.Tensor,
         *,
+        tgt_mask: Optional[torch.Tensor] = None,
         memory_mask: Optional[torch.Tensor] = None,
         tgt_key_padding_mask: Optional[torch.Tensor] = None,
         memory_key_padding_mask: Optional[torch.Tensor] = None,
@@ -212,6 +213,7 @@ class CachedTransformerDecoder(nn.TransformerDecoder):
                 output = mod(
                     output,
                     memory,
+                    tgt_mask=tgt_mask,
                     memory_mask=memory_mask,
                     tgt_key_padding_mask=tgt_key_padding_mask,
                     memory_key_padding_mask=memory_key_padding_mask,

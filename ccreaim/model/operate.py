@@ -18,7 +18,9 @@ def step(
     hyper_cfg: HyperConfig,
 ) -> tuple[torch.Tensor, torch.Tensor, dict[str, float]]:
     info: dict[str, float] = {}
-    if isinstance(model, transformer.Transformer):
+    if isinstance(model, transformer.Transformer) or isinstance(
+        model, transformer.CachedTransformer
+    ):
         seq, _ = batch
         seq = seq.squeeze().to(device)
         src = F.one_hot(seq.long(), num_classes=256).int()
@@ -35,7 +37,7 @@ def step(
         pred = model(src, tgt, tgt_mask=tgt_mask)
         if hyper_cfg.transformer.linear_map:
             pred = pred.view(-1, hyper_cfg.vqvae.num_embeddings)
-            trf_auto = F.cross_entropy(pred, seq.view(-1))
+            trf_auto = F.cross_entropy(pred, seq.view(-1).long())
         else:
             trf_auto = F.mse_loss(pred, src)
 
