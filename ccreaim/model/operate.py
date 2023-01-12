@@ -224,6 +224,8 @@ def get_model_init_function(hyper_cfg: HyperConfig):
         get_model = lambda: vqvae.get_vqvae(hyper_cfg)
     elif hyper_cfg.model == "transformer":
         get_model = lambda: transformer.get_transformer(hyper_cfg)
+    elif hyper_cfg.model == "cached-transformer":
+        get_model = lambda: transformer.get_transformer(hyper_cfg)
     elif hyper_cfg.model == "e2e":
         get_model = lambda: e2e.get_e2e(hyper_cfg)
     elif hyper_cfg.model == "e2e-chunked":
