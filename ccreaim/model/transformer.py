@@ -141,9 +141,9 @@ class Transformer(nn.Module):
             ids_one_hot = F.one_hot(ids.long(), num_classes=256).int()
 
             if not first:
-                tgt[:, gen_tokens + i, :] = ids_one_hot
+                tgt[:, gen_tokens + i, :] = ids_one_hot.squeeze()
             else:
-                tgt[:, 1 + i, :] = ids_one_hot
+                tgt[:, 1 + i, :] = ids_one_hot.squeeze()
 
     def generate_chunks(
         self,
@@ -183,6 +183,7 @@ class CachedTransformerDecoder(nn.TransformerDecoder):
         tgt: torch.Tensor,
         memory: torch.Tensor,
         *,
+        tgt_mask: Optional[torch.Tensor] = None,
         memory_mask: Optional[torch.Tensor] = None,
         tgt_key_padding_mask: Optional[torch.Tensor] = None,
         memory_key_padding_mask: Optional[torch.Tensor] = None,
@@ -212,6 +213,7 @@ class CachedTransformerDecoder(nn.TransformerDecoder):
                 output = mod(
                     output,
                     memory,
+                    tgt_mask=tgt_mask,
                     memory_mask=memory_mask,
                     tgt_key_padding_mask=tgt_key_padding_mask,
                     memory_key_padding_mask=memory_key_padding_mask,
@@ -224,10 +226,9 @@ class CachedTransformerDecoder(nn.TransformerDecoder):
             output = mod(output, memory)
             new_token_cache.append(output)
             if cache is not None:
-                output = torch.cat([cache[i], output], dim=0)
-
+                output = torch.cat([cache[i], output], dim=1)
         if cache is not None:
-            new_cache = torch.cat([cache, torch.stack(new_token_cache, dim=0)], dim=1)
+            new_cache = torch.cat([cache, torch.stack(new_token_cache, dim=0)], dim=2)
         else:
             new_cache = torch.stack(new_token_cache, dim=0)
 
@@ -257,7 +258,6 @@ class CachedTransformerDecoderLayer(nn.TransformerDecoderLayer):
             )
 
         tgt_last_tok = tgt[:, -1:, :]
-
         # self attention
         tmp_tgt = self.self_attn(
             tgt_last_tok,
@@ -268,7 +268,6 @@ class CachedTransformerDecoderLayer(nn.TransformerDecoderLayer):
         )[0]
         tgt_last_tok = tgt_last_tok + self.dropout1(tmp_tgt)
         tgt_last_tok = self.norm1(tgt_last_tok)
-
         # encoder-decoder attention
         tmp_tgt = self.multihead_attn(
             tgt_last_tok,
@@ -279,11 +278,11 @@ class CachedTransformerDecoderLayer(nn.TransformerDecoderLayer):
         )[0]
         tgt_last_tok = tgt_last_tok + self.dropout2(tmp_tgt)
         tgt_last_tok = self.norm2(tgt_last_tok)
-
         # final feed-forward network
         tmp_tgt = self.linear2(
             self.dropout(self.activation(self.linear1(tgt_last_tok)))
         )
+
         tgt_last_tok = tgt_last_tok + self.dropout3(tmp_tgt)
         tgt_last_tok = self.norm3(tgt_last_tok)
         return tgt_last_tok
@@ -388,7 +387,6 @@ class CachedTransformer(nn.Module):
     def generate(
         self, src: torch.Tensor, tgt: torch.Tensor, gen_tokens: int, first: bool
     ) -> None:
-
         memory = self.transformer_encoder(src)
 
         cache = None
@@ -397,18 +395,18 @@ class CachedTransformer(nn.Module):
                 tgt_chunk = tgt[:, : gen_tokens + i, :]
             else:
                 tgt_chunk = tgt[:, : 1 + i, :]
-
             trf_out_flat, cache = self.transformer_decoder(
                 memory, tgt_chunk, cache=cache
             )
             trf_pred = trf_out_flat[:, -1:, :]
+
             ids = trf_pred.argmax(-1)
             ids_one_hot = F.one_hot(ids.long(), num_classes=256).int()
 
             if not first:
-                tgt[:, gen_tokens + i, :] = ids_one_hot
+                tgt[:, gen_tokens + i, :] = ids_one_hot.squeeze()
             else:
-                tgt[:, 1 + i, :] = ids_one_hot
+                tgt[:, 1 + i, :] = ids_one_hot.squeeze()
 
     def generate_chunks(
         self,
