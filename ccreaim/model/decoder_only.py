@@ -74,6 +74,7 @@ class CachedDecoderOnly(nn.Module):
             else:
                 tgt_chunk = tgt[:, : 1 + i, :]
 
+            tgt_chunk = self.positional_encoder(tgt_chunk)
             trf_out_flat, cache = self.transformer_decoder(tgt_chunk, cache=cache)
             trf_out = self.trf_out_to_tokens(trf_out_flat)
             trf_pred = trf_out[:, -1:, :]
