@@ -153,6 +153,8 @@ class Transformer(nn.Module):
         tgt = gen[:, : tgt_chunk + 1, :]
         self.generate(src, tgt, tgt_chunk, True)
 
+        gen = gen[:, 1:, :]
+
         for chunk in range(num_chunks - 1):
             src = audio[
                 :,
@@ -161,7 +163,6 @@ class Transformer(nn.Module):
             tgt = gen[:, chunk * tgt_chunk : chunk * tgt_chunk + 2 * tgt_chunk]
             self.generate(src, tgt, tgt_chunk, False)
 
-        gen = gen[:, 1:, :]
         return gen
 
 
@@ -371,6 +372,7 @@ class CachedTransformer(nn.Module):
     def generate(
         self, src: torch.Tensor, tgt: torch.Tensor, gen_tokens: int, first: bool
     ) -> None:
+        src = self.positional_encoder(src)
         memory = self.transformer_encoder(src)
 
         cache = None
@@ -379,11 +381,12 @@ class CachedTransformer(nn.Module):
                 tgt_chunk = tgt[:, : gen_tokens + i, :]
             else:
                 tgt_chunk = tgt[:, : 1 + i, :]
+            tgt_chunk = self.positional_encoder(tgt_chunk)
             trf_out_flat, cache = self.transformer_decoder(
-                memory, tgt_chunk, cache=cache
+                tgt_chunk, memory, cache=cache
             )
-            trf_pred = trf_out_flat[:, -1:, :]
-
+            trf_out = self.trf_out_to_tokens(trf_out_flat)
+            trf_pred = trf_out[:, -1:, :]
             ids = trf_pred.argmax(-1)
             ids_one_hot = F.one_hot(ids.long(), num_classes=256).int()
 
