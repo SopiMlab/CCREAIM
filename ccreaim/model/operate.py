@@ -6,7 +6,7 @@ from torch.nn import functional as F
 
 from ..utils import util
 from ..utils.cfg_classes import HyperConfig
-from . import ae, e2e, e2e_chunked, transformer, vae, vqvae
+from . import ae, decoder_only, e2e, e2e_chunked, transformer, vae, vqvae
 
 log = logging.getLogger(__name__)
 
@@ -32,9 +32,32 @@ def step(
             ),
             dim=1,
         )
-        tgt_mask = model.get_tgt_mask(tgt.size(1))
+        tgt_mask = util.get_tgt_mask(tgt.size(1))
         tgt_mask = tgt_mask.to(device)
         pred = model(src, tgt, tgt_mask=tgt_mask)
+        if hyper_cfg.transformer.linear_map:
+            pred = pred.view(-1, hyper_cfg.vqvae.num_embeddings)
+            trf_auto = F.cross_entropy(pred, seq.view(-1).long())
+        else:
+            trf_auto = F.mse_loss(pred, src)
+
+        loss = trf_auto
+
+    elif isinstance(model, decoder_only.CachedDecoderOnly):
+        seq, _ = batch
+        seq = seq.squeeze().to(device)
+        src = F.one_hot(seq.long(), num_classes=256).int()
+        src = src.to(device)
+        tgt = torch.cat(
+            (
+                torch.zeros_like(src[:, 0:1, :], device=src.device),
+                src[:, :-1, :],
+            ),
+            dim=1,
+        )
+        tgt_mask = util.get_tgt_mask(tgt.size(1))
+        tgt_mask = tgt_mask.to(device)
+        pred = model(tgt, tgt_mask=tgt_mask)
         if hyper_cfg.transformer.linear_map:
             pred = pred.view(-1, hyper_cfg.vqvae.num_embeddings)
             trf_auto = F.cross_entropy(pred, seq.view(-1).long())
@@ -228,6 +251,8 @@ def get_model_init_function(hyper_cfg: HyperConfig):
         get_model = lambda: transformer.get_transformer(hyper_cfg)
     elif hyper_cfg.model == "cached-transformer":
         get_model = lambda: transformer.get_transformer(hyper_cfg)
+    elif hyper_cfg.model == "transformer-decoder-only":
+        get_model = lambda: decoder_only.get_decoder(hyper_cfg)
     elif hyper_cfg.model == "e2e":
         get_model = lambda: e2e.get_e2e(hyper_cfg)
     elif hyper_cfg.model == "e2e-chunked":

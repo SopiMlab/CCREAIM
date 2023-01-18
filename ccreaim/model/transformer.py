@@ -117,14 +117,6 @@ class Transformer(nn.Module):
         out = self.trf_out_to_tokens(trf_out)
         return out
 
-    def get_tgt_mask(self, size: int) -> torch.Tensor:
-        # Generates a squeare matrix where the each row allows one word more to be seen
-        mask = torch.tril(torch.ones(size, size) == 1)  # Lower triangular matrix
-        mask = mask.float()
-        mask = mask.masked_fill(mask == 0, float("-inf"))  # Convert zeros to -inf
-        mask = mask.masked_fill(mask == 1, float(0.0))  # Convert ones to 0
-        return mask
-
     def generate(
         self, src: torch.Tensor, tgt: torch.Tensor, gen_tokens: int, first: bool
     ) -> None:
@@ -375,14 +367,6 @@ class CachedTransformer(nn.Module):
 
         out = self.trf_out_to_tokens(trf_dec_out)
         return out
-
-    def get_tgt_mask(self, size: int) -> torch.Tensor:
-        # Generates a squeare matrix where the each row allows one word more to be seen
-        mask = torch.tril(torch.ones(size, size) == 1)  # Lower triangular matrix
-        mask = mask.float()
-        mask = mask.masked_fill(mask == 0, float("-inf"))  # Convert zeros to -inf
-        mask = mask.masked_fill(mask == 1, float(0.0))  # Convert ones to 0
-        return mask
 
     def generate(
         self, src: torch.Tensor, tgt: torch.Tensor, gen_tokens: int, first: bool
