@@ -44,14 +44,13 @@ def step(
         loss = trf_auto
 
     elif isinstance(model, decoder_only.CachedDecoderOnly):
-        seq, _ = batch
-        seq = seq.squeeze().to(device)
-        src = F.one_hot(seq.long(), num_classes=256).int()
-        src = src.to(device)
+        seq, _, features = batch
+        features = features.to(device)
+        seq = seq.to(device)
         tgt = torch.cat(
             (
-                torch.zeros_like(src[:, 0:1, :], device=src.device),
-                src[:, :-1, :],
+                torch.zeros_like(features[:, 0:1, :], device=features.device),
+                features[:, :-1, :],
             ),
             dim=1,
         )

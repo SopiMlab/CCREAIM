@@ -48,6 +48,7 @@ class CachedDecoderOnly(nn.Module):
         *,
         tgt_mask: Optional[torch.Tensor] = None,
         tgt_key_padding_mask: Optional[torch.Tensor] = None,
+        no_cache: bool = False,
     ) -> torch.Tensor:
         # Tgt size must be (batch_size, tgt sequence length)
 
@@ -59,20 +60,18 @@ class CachedDecoderOnly(nn.Module):
             src=tgt,
             src_mask=tgt_mask,
             src_key_padding_mask=tgt_key_padding_mask,
+            no_cache=no_cache,
         )
-        if not self.training:
+        if not self.training and not no_cache:
             trf_out = trf_out[0]
 
         out = self.trf_out_to_tokens(trf_out)
         return out
 
-    def generate(self, tgt: torch.Tensor, gen_tokens: int, first: bool) -> None:
+    def generate(self, tgt: torch.Tensor, gen_tokens: int) -> None:
         cache = None
         for i in range(gen_tokens):
-            if not first:
-                tgt_chunk = tgt[:, : gen_tokens + i, :]
-            else:
-                tgt_chunk = tgt[:, : 1 + i, :]
+            tgt_chunk = tgt[:, : gen_tokens + i, :]
 
             tgt_chunk = self.positional_encoder(tgt_chunk)
             trf_out_flat, cache = self.transformer_decoder(tgt_chunk, cache=cache)
@@ -82,10 +81,7 @@ class CachedDecoderOnly(nn.Module):
             ids = trf_pred.argmax(-1)
             ids_one_hot = F.one_hot(ids.long(), num_classes=256).int()
 
-            if not first:
-                tgt[:, gen_tokens + i, :] = ids_one_hot.squeeze()
-            else:
-                tgt[:, 1 + i, :] = ids_one_hot.squeeze()
+            tgt[:, gen_tokens + i] = ids_one_hot.squeeze()
 
     def generate_chunks(
         self,
@@ -94,15 +90,12 @@ class CachedDecoderOnly(nn.Module):
     ) -> torch.Tensor:
         num_chunks = audio.size(1) // tgt_chunk
         gen = torch.zeros(
-            (audio.size(0), num_chunks * tgt_chunk + 1, 256), device=audio.device
+            (audio.size(0), (num_chunks + 1) * tgt_chunk, 256), device=audio.device
         )
-        tgt = gen[:, : tgt_chunk + 1, :]
-        self.generate(tgt, tgt_chunk, True)
-        gen = gen[:, 1:, :]
-
-        for chunk in range(num_chunks - 1):
+        gen[:, :tgt_chunk, :] = audio[:, :tgt_chunk, :]
+        for chunk in range(num_chunks):
             tgt = gen[:, chunk * tgt_chunk : chunk * tgt_chunk + 2 * tgt_chunk]
-            self.generate(tgt, tgt_chunk, False)
+            self.generate(tgt, tgt_chunk)
         return gen
 
 
@@ -118,6 +111,7 @@ class CachedTransformerEncoder(nn.TransformerEncoder):
         src_mask: Optional[torch.Tensor] = None,
         src_key_padding_mask: Optional[torch.Tensor] = None,
         cache: Optional[torch.Tensor] = None,
+        no_cache: bool = False,
     ) -> Union[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
         """
         Args:
@@ -135,7 +129,7 @@ class CachedTransformerEncoder(nn.TransformerEncoder):
 
         output = src
 
-        if self.training:
+        if self.training or no_cache:
             if cache is not None:
                 raise ValueError("cache parameter should be None in training mode")
             for mod in self.layers:
@@ -143,6 +137,7 @@ class CachedTransformerEncoder(nn.TransformerEncoder):
                     output,
                     src_mask=src_mask,
                     src_key_padding_mask=src_key_padding_mask,
+                    no_cache=no_cache,
                 )
 
             return output
@@ -170,9 +165,10 @@ class CachedTransformerEncoderLayer(nn.TransformerEncoderLayer):
         *,
         src_mask: Optional[torch.Tensor] = None,
         src_key_padding_mask: Optional[torch.Tensor] = None,
+        no_cache: bool = False,
     ) -> torch.Tensor:
 
-        if self.training:
+        if self.training or no_cache:
             return super().forward(
                 src,
                 src_mask=src_mask,
