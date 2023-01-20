@@ -6,7 +6,7 @@ from torch.nn import functional as F
 
 from ..utils import util
 from ..utils.cfg_classes import HyperConfig
-from . import ae, e2e, e2e_chunked, transformer, vae, vqvae
+from . import ae, decoder_only, e2e, e2e_chunked, transformer, vae, vqvae
 
 log = logging.getLogger(__name__)
 
@@ -39,6 +39,28 @@ def step(
             trf_auto = F.cross_entropy(pred, inds)
         else:
             trf_auto = F.mse_loss(pred, src)
+
+        loss = trf_auto
+
+    elif isinstance(model, decoder_only.CachedDecoderOnly):
+        seq, _, inds = batch
+        seq = seq.to(device)
+        tgt = torch.cat(
+            (
+                torch.zeros_like(seq[:, 0:1, :], device=seq.device),
+                seq[:, :-1, :],
+            ),
+            dim=1,
+        )
+        tgt_mask = util.get_tgt_mask(tgt.size(1))
+        tgt_mask = tgt_mask.to(device)
+        pred = model(tgt, tgt_mask=tgt_mask)
+        if hyper_cfg.transformer.linear_map:
+            pred = pred.view(-1, hyper_cfg.vqvae.num_embeddings)
+            inds = inds.view(-1)
+            trf_auto = F.cross_entropy(pred, inds)
+        else:
+            trf_auto = F.mse_loss(pred, seq)
 
         loss = trf_auto
 
