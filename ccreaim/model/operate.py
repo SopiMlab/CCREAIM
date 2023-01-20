@@ -45,6 +45,7 @@ def step(
     elif isinstance(model, decoder_only.CachedDecoderOnly):
         seq, _, inds = batch
         seq = seq.to(device)
+        inds = inds.to(device)
         tgt = torch.cat(
             (
                 torch.zeros_like(seq[:, 0:1, :], device=seq.device),
