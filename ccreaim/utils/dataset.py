@@ -78,6 +78,35 @@ class Audio8BitDataset(data.Dataset):
         return len(self.sample_path_list)
 
 
+class FeatureizedAudio8BitDataset(data.Dataset):
+    def __init__(self, data_root: Path, seq_len: int, ext: str = "wav"):
+        self.data_root = Path(data_root)
+        self.seq_len = seq_len
+        self.ext = ext
+        self.sample_path_list = util.get_sample_path_list(self.data_root, self.ext)
+        self.trf_mfcc = torchaudio.transforms.MFCC(
+            sample_rate=16000, n_mfcc=32, melkwargs={"n_fft": 400, "hop_length": 1}
+        )
+
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, str, torch.Tensor]:
+        file_name = str(self.sample_path_list[index])
+        waveform, _ = torchaudio.load(file_name, format=self.ext, normalize=False)  # type: ignore
+        waveform = waveform.squeeze()
+        padded_waveform = F.pad(
+            waveform, (0, self.seq_len - waveform.size(0)), value=0
+        ).to(torch.float32)
+        features = self.featurize(padded_waveform)
+        return padded_waveform, file_name, features.T
+
+    def featurize(self, waveform: torch.Tensor) -> torch.Tensor:
+        mfcc = self.trf_mfcc(waveform)[:, :-1]
+        mfcc_delta1 = torchaudio.functional.compute_deltas(mfcc)
+        return torch.cat([mfcc, mfcc_delta1], dim=0)
+
+    def __len__(self):
+        return len(self.sample_path_list)
+
+
 class ChunkedAudioDataset(data.Dataset):
     def __init__(self, data_root: Path, seq_len: int, seq_num: int, ext: str = "wav"):
         self.data_root = Path(data_root)
