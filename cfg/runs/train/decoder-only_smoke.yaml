@@ -14,20 +14,20 @@ data:
 
 hyper:
   model: transformer-decoder-only
-  latent_dim: 256
+  latent_dim: 8
   seed: 0
   seq_len: ???
   epochs: 10
   batch_size: 8
   learning_rate: 1e-4
   transformer:
-    num_heads_latent_dimension_div: 64
+    num_heads_latent_dimension_div: 2
     num_enc_layers: 0
     num_dec_layers: 1
     autoregressive_loss_weight: 1
     linear_map: true
   vqvae:
-    num_embeddings: 256
+    num_embeddings: 512
     beta: 0
     reset_patience: -1
 
@@ -37,10 +37,11 @@ resources:
   num_workers: 4
 
   # General resource configs
-  timeout_min: 5000
+  timeout_min: 239
   cpus_per_task: 4
   gpus_per_node: 1
   tasks_per_node: 1
   mem_gb: 4
 
   nodes: 1
+  partition: gpushort
