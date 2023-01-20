@@ -22,7 +22,7 @@ def step(
         model, transformer.CachedTransformer
     ):
         seq, _ = batch
-        seq = seq.squeeze().to(device)
+        seq = seq.to(device)
         src = F.one_hot(seq.long(), num_classes=256).int()
         src = src.to(device)
         tgt = torch.cat(
@@ -45,7 +45,7 @@ def step(
 
     elif isinstance(model, decoder_only.CachedDecoderOnly):
         seq, _ = batch
-        seq = seq.squeeze().to(device)
+        seq = seq.to(device)
         src = F.one_hot(seq.long(), num_classes=256).int()
         src = src.to(device)
         tgt = torch.cat(
