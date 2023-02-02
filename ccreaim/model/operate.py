@@ -6,7 +6,7 @@ from torch.nn import functional as F
 
 from ..utils import util
 from ..utils.cfg_classes import HyperConfig
-from . import ae, decoder_only, e2e, e2e_chunked, transformer, vae, vqvae
+from . import ae, e2e, e2e_chunked, transformer, vqvae
 
 log = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ def step(
 
         loss = trf_auto
 
-    elif isinstance(model, decoder_only.CachedDecoderOnly):
+    elif isinstance(model, transformer.CachedDecoderTransformer):
         seq, _, inds = batch
         seq = seq.to(device)
         inds = inds.to(device)
@@ -153,39 +153,6 @@ def step(
             + hyper_cfg.transformer.autoregressive_loss_weight * trf_auto_ce
         )
 
-    elif isinstance(model, vae.VAE):
-        seq, _ = batch
-        seq = seq.to(device)
-        pred, mu, sigma = model(seq)
-        mae = torch.abs(pred - seq).mean()
-        mse = F.mse_loss(pred, seq)
-        kld_weight = hyper_cfg.kld_loss.weight
-        kld = -0.5 * (1 + torch.log(sigma**2) - mu**2 - sigma**2).sum()
-        spec_weight = hyper_cfg.spectral_loss.weight
-        spec_conv = util.spectral_convergence(seq, pred, hyper_cfg.spectral_loss)
-        spec_conv = spec_conv.mean()
-        multi_spec = util.multispectral_loss(seq, pred, hyper_cfg.spectral_loss)
-        multi_spec = multi_spec.mean()
-        info.update(
-            {
-                "train/loss_mae": float(mae.item()),
-                "train/loss_mse": float(mse.item()),
-                "train/loss_kld": float((kld_weight * kld).item()),
-                "train/loss_spectral_convergence": float(
-                    spec_weight * spec_conv.item()
-                ),
-                "train/loss_multi_spectral": float(spec_weight * multi_spec.item()),
-            }
-        )
-
-        loss = (
-            mse
-            + mae
-            + kld_weight * kld
-            + spec_weight * spec_conv
-            + spec_weight * multi_spec
-        )
-
     elif isinstance(model, vqvae.VQVAE):
         seq, _ = batch
         seq = seq.to(device)
@@ -238,8 +205,6 @@ def get_model_init_function(hyper_cfg: HyperConfig):
         get_model = lambda: ae.get_autoencoder(hyper_cfg)
     elif hyper_cfg.model == "res-ae":
         get_model = lambda: ae.get_autoencoder(hyper_cfg)
-    elif hyper_cfg.model == "vae":
-        get_model = lambda: vae.get_vae(hyper_cfg)
     elif hyper_cfg.model == "res-vae":
         get_model = lambda: vae.get_vae(hyper_cfg)
     elif hyper_cfg.model == "vq-vae":
@@ -249,7 +214,7 @@ def get_model_init_function(hyper_cfg: HyperConfig):
     elif hyper_cfg.model == "transformer":
         get_model = lambda: transformer.get_transformer(hyper_cfg)
     elif hyper_cfg.model == "transformer-decoder-only":
-        get_model = lambda: decoder_only.get_decoder(hyper_cfg)
+        get_model = lambda: transformer.get_decoder(hyper_cfg)
     elif hyper_cfg.model == "e2e":
         get_model = lambda: e2e.get_e2e(hyper_cfg)
     elif hyper_cfg.model == "e2e-chunked":

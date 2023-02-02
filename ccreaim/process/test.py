@@ -7,9 +7,9 @@ from pathlib import Path
 import torch
 import torch.utils.data
 import torchaudio
+import wandb
 from omegaconf import OmegaConf
 
-import wandb
 from ccreaim.model import ae
 from ccreaim.model.e2e_chunked import prepare_data_for_transformer
 
@@ -125,7 +125,7 @@ def test(
         )
         log.info(f"Create a dataset and dataloader from {str(data_dir)}")
         chunked_data = dataset.ChunkedAudioDataset(
-            data_dir, cfg.hyper.seq_len, cfg.logging.transformer_training_num_seq
+            data_dir, cfg.hyper.seq_len, cfg.logging.transformer_training_data_num_seq
         )
         chunked_dataloader = torch.utils.data.DataLoader(
             chunked_data,
@@ -136,7 +136,7 @@ def test(
 
         encoder_output_length = ae.res_encoder_output_seq_length(cfg.hyper)
         tmp_chunked_features_tar_path = Path(
-            f"/tmp/transformer_training_data_seqlen-{cfg.hyper.seq_len}_numseq-{cfg.logging.transformer_training_num_seq}_latent-dim-{cfg.hyper.latent_dim}_num-embeddings-{cfg.hyper.vqvae.num_embeddings}_{cfg.logging.run_id}.tar"
+            f"/tmp/transformer_training_data_seqlen-{cfg.hyper.seq_len}_numseq-{cfg.logging.transformer_training_data_num_seq}_latent-dim-{cfg.hyper.latent_dim}_num-embeddings-{cfg.hyper.vqvae.num_embeddings}_{cfg.logging.run_id}.tar"
         )
         log.info(
             f"Opening chunked features tar at: {str(tmp_chunked_features_tar_path)}"
@@ -155,7 +155,7 @@ def test(
                     model.encoder,
                     model.vq,
                     cfg.hyper.seq_len,
-                    cfg.logging.transformer_training_num_seq,
+                    cfg.logging.transformer_training_data_num_seq,
                     encoder_output_length,
                     cfg.hyper.latent_dim,
                 )

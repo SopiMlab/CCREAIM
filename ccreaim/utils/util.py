@@ -111,27 +111,6 @@ def get_sample_path_list(data_root: Path, ext: str = "mp3") -> list[Path]:
     return list(data_root.rglob(f"*.{ext}"))
 
 
-# Calculates padding for nn.Conv1d-layers to achieve l_out=ceil(l_in/stride)
-def conf_same_padding_calc(length: int, stride: int, kernel_size: int):
-    out_length = math.ceil(float(length) / float(stride))
-
-    if length % stride == 0:
-        pad = max(kernel_size - stride, 0)
-    else:
-        pad = max(kernel_size - (length % stride), 0)
-
-    return math.ceil(pad / 2), out_length
-
-
-# Calculates padding and output_padding for nn.ConvTranspose1d to get preferred length_out with minimal output_padding
-def conf_same_padding_calc_t(
-    length_in: int, length_out: int, stride: int, kernel_size: int
-):
-    padding = math.ceil(((length_in - 1) * stride - length_out + kernel_size) / 2)
-    output_padding = length_out - ((length_in - 1) * stride - 2 * padding + kernel_size)
-    return padding, output_padding
-
-
 # Returns the path to the directory where a model is exported to/imported from according
 # to configuration in cfg, as well as the base name of the model.
 def get_model_path(cfg: BaseConfig):
