@@ -10,7 +10,7 @@ import torch
 import torchaudio
 from omegaconf import OmegaConf
 
-from ..model import ae, transformer, vqvae
+from ..model import ae, decoder_only, transformer, vqvae
 from .cfg_classes import BaseConfig, HyperConfig, SpectralLossConfig
 
 log = logging.getLogger(__name__)
@@ -366,6 +366,60 @@ def load_pre_trained_transformer(
             f"{hyper_cfg.transformer.num_enc_layers}"
             "\t---\t"
             f"{pretrained_hyper_cfg.transformer.num_enc_layers}\n"
+            "transformer.num_dec_layers: \t\t\t"
+            f"{hyper_cfg.transformer.num_dec_layers}"
+            "\t---\t"
+            f"{pretrained_hyper_cfg.transformer.num_dec_layers}\n"
+            "transformer.linear_map:\t\t\t\t"
+            f"{hyper_cfg.transformer.linear_map}"
+            "\t---\t"
+            f"{pretrained_hyper_cfg.transformer.linear_map}\n"
+        )
+
+
+def load_pre_trained_decoder_only(
+    hyper_cfg: HyperConfig, trf: decoder_only.CachedDecoderOnly
+) -> decoder_only.CachedDecoderOnly:
+    checkpoint = torch.load(hyper_cfg.pre_trained_decoder_only_path, map_location="cpu")
+    pretrained_state_dict = checkpoint["model_state_dict"]
+    hyper_cfg_schema = OmegaConf.structured(HyperConfig)
+    conf = OmegaConf.create(checkpoint["hyper_config"])
+    pretrained_hyper_cfg = OmegaConf.merge(hyper_cfg_schema, conf)
+
+    if (
+        hyper_cfg.latent_dim == pretrained_hyper_cfg.latent_dim
+        and hyper_cfg.vqvae.num_embeddings == pretrained_hyper_cfg.vqvae.num_embeddings
+        and hyper_cfg.transformer.num_heads_latent_dimension_div
+        == pretrained_hyper_cfg.transformer.num_heads_latent_dimension_div
+        and hyper_cfg.transformer.num_dec_layers
+        == pretrained_hyper_cfg.transformer.num_dec_layers
+        and hyper_cfg.transformer.linear_map
+        == pretrained_hyper_cfg.transformer.linear_map
+    ):
+        trf.load_state_dict(pretrained_state_dict)
+        log.info(
+            f"Loaded Decoder-only weights from {hyper_cfg.pre_trained_transformer_path}"
+        )
+        if hyper_cfg.freeze_pre_trained:
+            trf.requires_grad_(False)
+            log.info(f"Froze Decoder-only weights.")
+        return trf
+    else:
+        raise ValueError(
+            f"Pre-trained config is not matching current config:\n"
+            "\t\t\t\t\tCurrent config\t---\tPre-trained config\n"
+            "latent_dim:\t\t\t\t\t"
+            f"{hyper_cfg.latent_dim}"
+            "\t---\t"
+            f"{pretrained_hyper_cfg.latent_dim}\n"
+            "vqvae.num_embeddings:\t\t\t\t"
+            f"{hyper_cfg.vqvae.num_embeddings}"
+            "\t---\t"
+            f"{pretrained_hyper_cfg.vqvae.num_embeddings}\n"
+            "transformer.num_heads_latent_dimension_div: \t"
+            f"{hyper_cfg.transformer.num_heads_latent_dimension_div}"
+            "\t---\t"
+            f"{pretrained_hyper_cfg.transformer.num_heads_latent_dimension_div} \n"
             "transformer.num_dec_layers: \t\t\t"
             f"{hyper_cfg.transformer.num_dec_layers}"
             "\t---\t"

@@ -6,7 +6,7 @@ from torch.nn import functional as F
 
 from ..utils import util
 from ..utils.cfg_classes import HyperConfig
-from . import ae, transformer, vae, vqvae
+from . import ae, decoder_only, transformer, vae, vqvae
 
 
 class E2EChunked(nn.Module):
@@ -228,14 +228,13 @@ class E2EChunkedVQVAE(nn.Module):
         )
 
     def generate(
-        self, data: torch.Tensor, in_chunks: int, feed_in_tokens: int, gen_chunks: int
+        self, data: torch.Tensor, feed_in_chunks: int, gen_chunks: int
     ) -> torch.Tensor:
         """Generate audio from an impot context
 
         Args:
             data (torch.Tensor): The input context to the generated audio
-            in_chunks (int): The number of chunks in the input context
-            feed_in_len (int): The number of 'tokens' to feed into the transformer decoder
+            feed_in_chunks (int): The number of 'tokens' to feed into the transformer decoder
             gen_chunks (int): The number of chunks generated
 
         Returns:
@@ -245,42 +244,37 @@ class E2EChunkedVQVAE(nn.Module):
         enc_out_batch = self.encoder(data)
         enc_out_batch = enc_out_batch.transpose(-1, -2)
         enc_out = enc_out_batch.view(
-            -1, in_chunks, self.enc_out_length, self.latent_dim
+            -1, feed_in_chunks, self.enc_out_length, self.latent_dim
         )
         enc_out_flat = enc_out.flatten(1, 2)  # merge into sequence of vectors
 
         # VQ
         quantized_enc, _ = self.vq(enc_out_flat.transpose(-1, -2))
-        quantized_enc = quantized_enc.transpose(-1, -2)
+        tgt = quantized_enc.transpose(-1, -2)
 
-        src = quantized_enc
-        if feed_in_tokens == 0:
-            tgt = torch.zeros_like(src[:, 0:1], device=src.device)
-        else:
-            tgt = src[:, 0:feed_in_tokens]
-
+        print(tgt.size())
         for _ in range(gen_chunks * self.enc_out_length):
-            tgt_mask = self.trf.get_tgt_mask(tgt.size(1))
-            tgt_mask = tgt_mask.to(tgt.device)
-            trf_out_flat = self.trf(src, tgt, tgt_mask=tgt_mask)
+            trf_out_flat = self.trf(tgt)
             trf_pred = trf_out_flat[:, -1:, :]
             # VQ lookup
             emb_ids = trf_pred.argmax(-1)
             emb_ids_flat = emb_ids.flatten(0, 1)
             trf_vq_out = self.vq.lookup(emb_ids_flat)
-            tgt = torch.cat([tgt, trf_vq_out.unsqueeze(0)], dim=1)
+            tgt = torch.cat([tgt, trf_vq_out.unsqueeze(1)], dim=1)
 
-        trf_out_flat = tgt[:, feed_in_tokens:, :]
-        trf_out = trf_out_flat.view(
-            -1, gen_chunks, self.enc_out_length, self.latent_dim
-        )
-        trf_out_re_flat = trf_out.view(
+        print(tgt.size())
+        trf_out_flat = tgt  # [:, :, :]
+        print(trf_out_flat.size())
+        # trf_out = trf_out_flat.reshape(
+        #    -1, gen_chunks, self.enc_out_length, self.latent_dim
+        # )
+        trf_out_flat = trf_out_flat.reshape(
             -1, self.enc_out_length, self.latent_dim
         ).transpose(-1, -2)
 
-        dec_out = self.decoder(trf_out_re_flat)
+        dec_out = self.decoder(trf_out_flat)
         dec_out = dec_out.squeeze()
-        dec_out = dec_out.view(-1, gen_chunks, self.seq_length)
+        dec_out = dec_out.view(-1, feed_in_chunks + gen_chunks, self.seq_length)
         return dec_out
 
 
@@ -371,11 +365,10 @@ def _create_e2e_chunked_res_vqvae(hyper_cfg: HyperConfig) -> E2EChunkedVQVAE:
     encoder = ae.get_res_encoder(hyper_cfg)
     decoder = ae.get_res_decoder(hyper_cfg)
     encoder_output_length = ae.res_encoder_output_seq_length(hyper_cfg)
-    trf = transformer.Transformer(
+    trf = decoder_only.CachedDecoderOnly(
         dim_model=latent_dim,
         num_heads=latent_dim // hyper_cfg.transformer.num_heads_latent_dimension_div,
-        num_encoder_layers=hyper_cfg.transformer.num_enc_layers,
-        num_decoder_layers=hyper_cfg.transformer.num_dec_layers,
+        num_layers=hyper_cfg.transformer.num_dec_layers,
         dropout_p=0.1,
         linear_map=hyper_cfg.transformer.linear_map,
         num_embeddings=hyper_cfg.vqvae.num_embeddings,
@@ -391,8 +384,8 @@ def _create_e2e_chunked_res_vqvae(hyper_cfg: HyperConfig) -> E2EChunkedVQVAE:
             hyper_cfg, encoder, vq, decoder
         )
 
-    if hyper_cfg.pre_trained_transformer_path is not None:
-        trf = util.load_pre_trained_transformer(hyper_cfg, trf)
+    if hyper_cfg.pre_trained_decoder_only_path is not None:
+        trf = util.load_pre_trained_decoder_only(hyper_cfg, trf)
 
     return E2EChunkedVQVAE(
         encoder,

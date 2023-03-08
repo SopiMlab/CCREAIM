@@ -129,6 +129,7 @@ class HyperConfig:
     pre_trained_ae_path: Optional[str] = None
     pre_trained_vqvae_path: Optional[str] = None
     pre_trained_transformer_path: Optional[str] = None
+    pre_trained_decoder_only_path: Optional[str] = None
     kld_loss: Optional[KldLossConfig] = None
     spectral_loss: Optional[SpectralLossConfig] = None
     res_ae: Optional[ResAeConfig] = None
