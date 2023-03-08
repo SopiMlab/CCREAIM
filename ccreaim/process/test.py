@@ -55,7 +55,7 @@ def test(
     with torch.inference_mode():
         running_loss = torch.tensor(0.0)
         for batchnum, batch in enumerate(dataloader):
-            loss, pred, _ = operate.step(model, batch, device, cfg.hyper)
+            loss, pred, _ = operate.step(model, batch, device, cfg.hyper, batchnum)
             running_loss += loss.detach().cpu().item()
 
             if not cfg.logging.silent and batchnum % 100 == 0:

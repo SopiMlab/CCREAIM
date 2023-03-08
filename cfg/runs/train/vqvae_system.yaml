@@ -5,9 +5,15 @@ process:
 
 logging:
   exp_name: system
-  checkpoint: 10
+  checkpoint: 20
   save_pred: true
-  save_encoder_output: true
+  save_one_per_batch: true
+  save_encoder_output: false
+  save_transformer_training_data: true
+  transformer_training_data_tar_orig: /scratch/other/sopi/CCREAIM/datasets/chopped_65536.tar
+  transformer_training_data_tar_out: ${hydra:sweep.dir}/${hydra:sweep.subdir}/
+  transformer_training_num_seq: 4
+
 
 data:
   data_tar: /scratch/other/sopi/CCREAIM/datasets/chopped_65536.tar

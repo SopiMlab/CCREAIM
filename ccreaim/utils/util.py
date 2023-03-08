@@ -25,6 +25,8 @@ def set_seed(seed: int):
 
 
 def chop_sample(sample: torch.Tensor, sample_length: int) -> list[torch.Tensor]:
+    if len(sample.size()) != 1:
+        sample = torch.mean(sample, 0)
     assert len(sample.size()) == 1, "Sample is not 1 dimensional" + str(sample.size())
     chopped_samples_list: list[torch.Tensor] = []
     n_chops = len(sample) // sample_length
@@ -49,25 +51,28 @@ def chop_dataset(in_root: str, out_tar_file_path: str, ext: str, sample_length: 
                 log.warn(f"Could not open file, with error: {e}")
                 continue
 
-            chopped_samples = chop_sample(full_sample.squeeze(), sample_length)
-            for i, cs in enumerate(chopped_samples):
-                out_name = str(pth.stem) + f"_{i:03d}" + ".wav"
-                with io.BytesIO() as buffer:
-                    try:
-                        torchaudio.save(  # type: ignore
-                            buffer,
-                            cs.unsqueeze(0),
-                            sample_rate,
-                            encoding="PCM_F",
-                            bits_per_sample=32,
-                            format="wav",
-                        )
-                        buffer.seek(0)  # go to the beginning for reading the buffer
-                        out_info = tarfile.TarInfo(name=out_name)
-                        out_info.size = buffer.getbuffer().nbytes
-                        out_tar.addfile(tarinfo=out_info, fileobj=buffer)
-                    except Exception as e:
-                        log.error(e)
+            try:
+                chopped_samples = chop_sample(full_sample.squeeze(), sample_length)
+                for i, cs in enumerate(chopped_samples):
+                    out_name = str(pth.stem) + f"_{i:03d}" + ".wav"
+                    with io.BytesIO() as buffer:
+                        try:
+                            torchaudio.save(  # type: ignore
+                                buffer,
+                                cs.unsqueeze(0),
+                                sample_rate,
+                                encoding="PCM_F",
+                                bits_per_sample=32,
+                                format="wav",
+                            )
+                            buffer.seek(0)  # go to the beginning for reading the buffer
+                            out_info = tarfile.TarInfo(name=out_name)
+                            out_info.size = buffer.getbuffer().nbytes
+                            out_tar.addfile(tarinfo=out_info, fileobj=buffer)
+                        except Exception as e:
+                            log.error(e)
+            except:
+                print(f"Couldn't produce samples from path {pth}")
 
 
 def save_to_tar(
