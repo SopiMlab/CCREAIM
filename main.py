@@ -57,6 +57,9 @@ def main(cfg: cfg_classes.BaseConfig):
     if "transformer" in cfg.hyper.model:
         # Feature dataset
         data = dataset.FeatureDataset(tmp_data_root)
+    elif "bank-classifier" in cfg.hyper.model:
+        # "Bank dataset"
+        data = dataset.BankTransformerDataset(tmp_data_root)
     elif "e2e-chunked" in cfg.hyper.model:
         # Chunked sound dataset
         data = dataset.ChunkedAudioDataset(

@@ -197,7 +197,10 @@ class CachedTransformerEncoderLayer(nn.TransformerEncoderLayer):
 
 
 def get_decoder(hyper_cfg: HyperConfig) -> CachedDecoderOnly:
-    if hyper_cfg.model == "transformer-decoder-only":
+    if (
+        hyper_cfg.model == "transformer-decoder-only"
+        or hyper_cfg.model == "bank-classifier"
+    ):
         return CachedDecoderOnly(
             dim_model=hyper_cfg.latent_dim,
             num_heads=hyper_cfg.latent_dim

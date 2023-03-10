@@ -42,6 +42,28 @@ def step(
             trf_auto = F.mse_loss(pred, src)
 
         loss = trf_auto
+    elif "bank-classifier" in hyper_cfg.model:
+        features, inds, _ = batch
+        features = features.to(device)
+        inds = inds.long().to(device)
+        tgt = torch.cat(
+            (
+                torch.zeros_like(features[:, 0:1, :], device=features.device),
+                features[:, :-1, :],
+            ),
+            dim=1,
+        )
+        tgt_mask = util.get_tgt_mask(tgt.size(1))
+        tgt_mask = tgt_mask.to(device)
+        pred = model(tgt, tgt_mask=tgt_mask)
+
+        pred = pred.view(
+            -1, hyper_cfg.vqvae.num_embeddings
+        )  # num_embeddings = vocab_size
+        inds = inds.view(-1)
+        trf_auto = F.cross_entropy(pred, inds)
+
+        loss = trf_auto
 
     elif isinstance(model, decoder_only.CachedDecoderOnly):
         seq, _, inds = batch
@@ -287,6 +309,8 @@ def get_model_init_function(hyper_cfg: HyperConfig):
         get_model = lambda: e2e_chunked.get_e2e_chunked(hyper_cfg)
     elif hyper_cfg.model == "e2e-chunked_res-vqvae":
         get_model = lambda: e2e_chunked.get_e2e_chunked(hyper_cfg)
+    elif hyper_cfg.model == "bank-classifier":
+        get_model = lambda: decoder_only.get_decoder(hyper_cfg)
     else:
         raise ValueError(f"Model type {hyper_cfg.model} is not defined!")
     return get_model
