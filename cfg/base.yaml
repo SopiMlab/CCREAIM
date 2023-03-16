@@ -92,6 +92,7 @@ hyper:
     # num_dec_layers: ???
     # autoregressive_loss_weight: ???
     # linear_map: ???
+    # dim_feedforward: ???
   kld_loss: null
     # weight: ???
   spectral_loss:  null

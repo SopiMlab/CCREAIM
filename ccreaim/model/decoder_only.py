@@ -18,6 +18,7 @@ class CachedDecoderOnly(nn.Module):
         dropout_p: float,
         linear_map: bool = False,
         num_embeddings: int = 0,
+        dim_feedforward: int = 2048,
     ):
         super().__init__()
 
@@ -33,6 +34,7 @@ class CachedDecoderOnly(nn.Module):
                 nhead=num_heads,
                 dropout=dropout_p,
                 batch_first=True,
+                dim_feedforward=dim_feedforward,
             ),
             num_layers=num_layers,
         )
@@ -206,9 +208,10 @@ def get_decoder(hyper_cfg: HyperConfig) -> CachedDecoderOnly:
             num_heads=hyper_cfg.latent_dim
             // hyper_cfg.transformer.num_heads_latent_dimension_div,
             num_layers=hyper_cfg.transformer.num_dec_layers,
-            dropout_p=0.1,
+            dropout_p=hyper_cfg.transformer.dropout,
             linear_map=hyper_cfg.transformer.linear_map,
             num_embeddings=hyper_cfg.vqvae.num_embeddings,
+            dim_feedforward=hyper_cfg.transformer.dim_feedforward,
         )
     else:
         raise ValueError(f"Transformer model not implemented: {hyper_cfg.model}")

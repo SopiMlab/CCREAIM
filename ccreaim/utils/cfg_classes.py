@@ -97,6 +97,8 @@ class TransformerConfig:
     num_heads_latent_dimension_div: int
     num_enc_layers: int
     num_dec_layers: int
+    dim_feedforward: int
+    dropout: float
     autoregressive_loss_weight: float
     linear_map: bool
 
