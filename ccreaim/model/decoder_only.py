@@ -175,6 +175,7 @@ class CachedTransformerEncoderLayer(nn.TransformerEncoderLayer):
     ) -> torch.Tensor:
 
         if self.training:
+            # Use nn.TransformerEncoderLayer's forward function as is if training
             return super().forward(
                 src,
                 src_mask=src_mask,

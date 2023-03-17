@@ -59,55 +59,6 @@ class AudioDataset(data.Dataset):
     def __len__(self):
         return len(self.sample_path_list)
 
-
-class ChunkedAudioDataset(data.Dataset):
-    def __init__(self, data_root: Path, seq_len: int, seq_num: int, ext: str = "wav"):
-        self.data_root = Path(data_root)
-        self.seq_len = seq_len
-        self.ext = ext
-        self.seq_num = seq_num
-        self.sample_path_list = util.get_sample_path_list(self.data_root, self.ext)
-
-    def __getitem__(self, index: int) -> tuple[torch.Tensor, str, torch.Tensor]:
-        file_name = str(self.sample_path_list[index])
-        waveform, _ = torchaudio.load(file_name, format=self.ext)  # type: ignore
-        waveform = waveform.squeeze()
-        seq_list = util.chop_sample(waveform, self.seq_len)
-        seq_list[-1] = F.pad(
-            seq_list[-1], (0, self.seq_len - seq_list[-1].size(0)), value=0
-        )
-        seq = torch.stack(seq_list)
-        padded_seq = F.pad(seq, (0, 0, 0, self.seq_num - seq.size(0)), value=0)
-        pad_mask = torch.full((self.seq_num,), False)
-        pad_mask[seq.size(0) + 1 :] = True
-        return padded_seq, file_name, pad_mask
-
-    def __len__(self):
-        return len(self.sample_path_list)
-
-
-class FeatureDataset(data.Dataset):
-    def __init__(self, data_root: Path, ext: str = "pt"):
-        self.data_root = data_root
-        self.ext = ext
-        self.sample_path_list = util.get_sample_path_list(self.data_root, self.ext)
-
-    def __getitem__(
-        self, index: int
-    ) -> Union[tuple[torch.Tensor, str, torch.Tensor], tuple[torch.Tensor, str]]:
-        file_name = str(self.sample_path_list[index])
-        sample = torch.load(file_name, map_location="cpu")
-        feature = sample["feature"]
-        if "embedding_indicies" in sample:
-            inds = sample["embedding_indicies"]
-            return feature.squeeze(), file_name, inds.squeeze()
-        else:
-            return feature.squeeze(), file_name
-
-    def __len__(self):
-        return len(self.sample_path_list)
-
-
 class Bank(data.Dataset):
     def __init__(self, data_root: Path, context_length: int, ext: str = "pt"):
         self.data_root = data_root

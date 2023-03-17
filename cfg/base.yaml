@@ -28,12 +28,6 @@ logging:
   save_pred: false
   save_one_per_batch: true
   pred_output: ${hydra:sweep.dir}/${hydra:sweep.subdir}/predictions
-  save_encoder_output: false
-  encoder_output: ${hydra:sweep.dir}/${hydra:sweep.subdir}/
-  save_transformer_training_data: false
-  transformer_training_data_tar_orig: ???
-  transformer_training_data_tar_out: ${hydra:sweep.dir}/${hydra:sweep.subdir}/
-  transformer_training_num_seq: ???
 
 
 process:
@@ -82,7 +76,6 @@ hyper:
   batch_size: ???
   learning_rate: ???
   lr_scheduler_gamma: 1.0
-  freeze_pre_trained: false
   pre_trained_ae_path: null
   pre_trained_vqvae_path: null
   pre_trained_transformer_path: null
@@ -93,24 +86,4 @@ hyper:
     # autoregressive_loss_weight: ???
     # linear_map: ???
     # dim_feedforward: ???
-  kld_loss: null
-    # weight: ???
-  spectral_loss:  null
-    # weight: ???
-    # stft_bins: ???
-    # stft_hop_length: ???
-    # stft_window_size: ???
-  res_ae: null
-    # levels: ??? # orig 3
-    # downs_t: ??? # orig [3,2,2]
-    # strides_t: ??? # orig [2,2,2]
-    # input_emb_width: ??? # 1
-    # block_width: ??? # 32
-    # block_depth: ??? # 2
-    # block_m_conv: ??? # 1.0
-    # block_dilation_growth_rate: ??? #3
-    # block_dilation_cycle: null
-  vqvae: null
-    # num_embeddings: 4
-    # beta: 0.02
-    # reset_patience: 10
+    # vocab_size: ???

@@ -12,12 +12,6 @@ class LoggingConfig:
     save_pred: bool
     save_one_per_batch: bool
     pred_output: str
-    save_encoder_output: bool
-    transformer_training_data_tar_orig: str
-    transformer_training_data_tar_out: str
-    transformer_training_data_num_seq: int
-    save_transformer_training_data: bool
-    encoder_output: str
     # Saved model destination
     model_checkpoints: str
     checkpoint: int
@@ -67,32 +61,6 @@ class Resources:
 
 
 @dataclass
-class KldLossConfig:
-    weight: float
-
-
-@dataclass
-class SpectralLossConfig:
-    weight: float
-    stft_bins: list[int]
-    stft_hop_length: list[int]
-    stft_window_size: list[int]
-
-
-@dataclass
-class ResAeConfig:
-    levels: int
-    downs_t: list[int]
-    strides_t: list[int]
-    input_emb_width: int
-    block_width: int
-    block_depth: int
-    block_m_conv: float
-    block_dilation_growth_rate: int
-    block_dilation_cycle: Optional[int] = None
-
-
-@dataclass
 class TransformerConfig:
     num_heads_latent_dimension_div: int
     num_enc_layers: int
@@ -100,16 +68,8 @@ class TransformerConfig:
     dim_feedforward: int
     dropout: float
     autoregressive_loss_weight: float
+    vocab_size: int
     linear_map: bool
-
-
-@dataclass
-class VQVAEConfig:
-    num_embeddings: int
-    beta: float
-    # multiplier for reset threshold: 1 / (codebook_size * reset_patience)
-    # non-positive values turn off codebook resetting
-    reset_patience: float
 
 
 @dataclass
@@ -117,26 +77,15 @@ class HyperConfig:
     model: str
     seed: int
     latent_dim: int
-    seq_len: int
-    # number of sequences for e2e_chunked, should be original audio length / seq_len
-    num_seq: int
-    # concatenation moe for e2e_chunked
-    seq_cat: bool  # DEPRECATED
+    seq_len: int # basically context length, number of feature vectors. Unused but might come in handy
     epochs: int
     batch_size: int
     learning_rate: float
     lr_scheduler_gamma: float
-    freeze_pre_trained: Optional[bool] = False
     pre_trained_model_path: Optional[str] = None  # DEPRECATED
-    pre_trained_ae_path: Optional[str] = None
-    pre_trained_vqvae_path: Optional[str] = None
     pre_trained_transformer_path: Optional[str] = None
     pre_trained_decoder_only_path: Optional[str] = None
-    kld_loss: Optional[KldLossConfig] = None
-    spectral_loss: Optional[SpectralLossConfig] = None
-    res_ae: Optional[ResAeConfig] = None
     transformer: Optional[TransformerConfig] = None
-    vqvae: Optional[VQVAEConfig] = None
 
 
 @dataclass
