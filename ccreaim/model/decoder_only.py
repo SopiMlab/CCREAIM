@@ -68,44 +68,9 @@ class CachedDecoderOnly(nn.Module):
         out = self.trf_out_to_tokens(trf_out)
         return out
 
-    def generate(self, tgt: torch.Tensor, gen_tokens: int, first: bool) -> None:
-        cache = None
-        for i in range(gen_tokens):
-            if not first:
-                tgt_chunk = tgt[:, : gen_tokens + i, :]
-            else:
-                tgt_chunk = tgt[:, : 1 + i, :]
-
-            tgt_chunk = self.positional_encoder(tgt_chunk)
-            trf_out_flat, cache = self.transformer_decoder(tgt_chunk, cache=cache)
-            trf_out = self.trf_out_to_tokens(trf_out_flat)
-            trf_pred = trf_out[:, -1:, :]
-
-            ids = trf_pred.argmax(-1)
-            ids_one_hot = F.one_hot(ids.long(), num_classes=256).int()
-
-            if not first:
-                tgt[:, gen_tokens + i, :] = ids_one_hot.squeeze()
-            else:
-                tgt[:, 1 + i, :] = ids_one_hot.squeeze()
-
-    def generate_chunks(
-        self,
-        audio: torch.Tensor,
-        tgt_chunk: int,
-    ) -> torch.Tensor:
-        num_chunks = audio.size(1) // tgt_chunk
-        gen = torch.zeros(
-            (audio.size(0), num_chunks * tgt_chunk + 1, 256), device=audio.device
-        )
-        tgt = gen[:, : tgt_chunk + 1, :]
-        self.generate(tgt, tgt_chunk, True)
-        gen = gen[:, 1:, :]
-
-        for chunk in range(num_chunks - 1):
-            tgt = gen[:, chunk * tgt_chunk : chunk * tgt_chunk + 2 * tgt_chunk]
-            self.generate(tgt, tgt_chunk, False)
-        return gen
+    def generate() -> None:
+        return None
+        
 
 
 class CachedTransformerEncoder(nn.TransformerEncoder):

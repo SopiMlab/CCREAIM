@@ -1,29 +1,68 @@
 # CCREAIM
 
-[Quick project description]
+CCREAIM aims to explore musician and AI interactions in a live setting, utilizing transformer's attention weights to provide the musician with potentially interesting information about the motivation behind the AI's decisions. 
+
+This codebase includes the training and usage of models suitable for that task.
 
 ## Code structure
 
-[Explain parts of code, directory structure]
+Here's the directory structure of the parts relevant to the model's training and usage:
+```
+main.py
+live.py
+ccreaim/
+        utils/
+        model/
+        process/
+cfg/
+    hydra/
+        launcher/
+    runs/
+        test/
+        live/
+        train/
+notebooks/
+```
+`main.py` is used for training and non-live testing of the model, while `live.py` is used for the live setting. `ccreaim`-directory contains code relevant to the training of the model, as well as some useful utils. `cfg`-directory contains hydra configurations for both live and non-live situations. 
+
+## The model
+
+The model does prediction for the next token index in a sequence, for a predefined bank of audio samples. Essentially, the model is a causal decoder only transformer, so for training it uses a causal mask to prevent peeking into the future at training time and at inference the model returns "given some unfinished sequence, for each sample in the library, what is the likelihood that this sample is the next one in the sequence".  
 
 ## Usage
 
 ### Creating a dataset
+\[*This interface would be good to improve before publishing the code*\]
+
+To create a dataset, use `ccreaim/utils/create_feature_dataset.py`. Before running the script, some variables (mostly paths to directories/output paths) in the file should be modified. A directory with enough audio data (`vocab_size*sample_len_seconds`) should be created beforehand and specified in the code. All of the details are commented in the code itself. 
+
+An accompanying script `ccreaim/utils/create_sample_bank.py` should be run on the same audio directory, for inference purposes. 
 
 ### Running a training  
 
-[Explain how to run a training, with examples]
+To run a training, run `main.py` with relevant hydra configs. 
+
+An example command to launch trainings: 
+
+`nohup python main.py hydra/launcher=slurm runs=train/bank-classifier_system data.data_tar=/tmp/some_training_data.tar resources.timeout_min=120 hyper.transformer.dropout=0.5 hyper.learning_rate=1e-4,1e-5 hyper.epochs=80 logging.checkpoint=30 &`
+
+This command runs `main.py`with configs inherited from `cfg/base.yaml`, but overridden first with values from `cfg/hydra/launcher/slurm.yaml` and `cfg/runs/train/bank-classifier_system.yaml`, then again overridden with the values defined in the command. As a result, *two trainings are started* one with learning rate 1e-4 and one with learning rate 1e-5, otherwise identical. The logs and checkpoints for model weights will be output in locations defined as hydra configs in `base.yaml`.
 
 ### Inference
 
-[Explain where and how to do inference currently]
+Inference is done in a standard way with the transformer, `notebooks/test_model_bank.ipynb` has examples for how to run these. Notably, the cacheing does not work currently for some situations, so for now the standard transformer is used by counterintuitively setting `model.train()` during inference, and setting the training specific hyperparameter dropout to zero. 
+
+### Live
+\[**TODO**: implement for the new model\]
+
+A live session can be started with `python live.py runs=live/some_live_config.yaml`.
 
 ## Additional details
 
 ### Hydra
 
-[Roughly explain the config structure]
+This project uses [Hydra](https://hydra.cc/) as a configuration tool. Hydra uses hierarchical configuration, where the configuration is composed from multiple sources. For our project, `base.yaml`/`live.yaml` holds the basic configuration, and different files in `cfg/runs/*` in tandem with the command line add to and override that basic configuration. More info on Hydra usage [here](https://hydra.cc/docs/intro/).
 
 ### Wandb
 
-[Roughly explain how to for example add data to Wandb in the code]
+The project uses [Weights and Biases](https://wandb.ai/site), or wandb for short, for monitoring and storing training data. To use it, login to wandb in command line with `wandb login`, then start a training. By default, the configuration includes wandb logging, but if you want to exclude a training from wandb, use `logging.wandb=false`. More info on wandb usage [here](https://docs.wandb.ai/quickstart).
