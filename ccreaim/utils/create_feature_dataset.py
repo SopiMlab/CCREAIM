@@ -10,6 +10,13 @@ from pyAudioAnalysis import ShortTermFeatures, audioBasicIO
 from scipy.io import wavfile
 from torchaudio_augmentations import *
 
+
+"""
+This file can be used to create the training dataset required for the bank-classifier model. 
+For other necessary scripts to run, check "create_sample_bank.py".
+"""
+
+
 # Extract features from any length of audio
 # Check out 
 # https://github.com/tyiannak/pyAudioAnalysis/wiki
@@ -114,7 +121,7 @@ def main():
     # If you want to save some of the samples, where should they go
     sample_dir = "/scratch/other/sopi/CCREAIM/datasets/maestro_bank_data_samples"
 
-    # Path to the actual transformers training data
+    # Path to the transformer's training data
     training_data_tar = (
         "/scratch/other/sopi/CCREAIM/datasets/maestro_bank_training_aug.tar"
     )

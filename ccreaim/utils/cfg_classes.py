@@ -82,7 +82,9 @@ class HyperConfig:
     batch_size: int
     learning_rate: float
     lr_scheduler_gamma: float
-    pre_trained_model_path: Optional[str] = None  # DEPRECATED
+    pre_trained_model_path: Optional[str] = None  
+    # These could be used to trigger util.load_pre_trained_transformer/decoder_only(),
+    # but currently not implemented 
     pre_trained_transformer_path: Optional[str] = None
     pre_trained_decoder_only_path: Optional[str] = None
     transformer: Optional[TransformerConfig] = None

@@ -11,6 +11,9 @@ from . import test, train
 log = logging.getLogger(__name__)
 
 
+# Used only if cfg.process.train == True
+# Base case for training is to set cfg.process.corss_val_k == 0, so no cross validation is done
+# For the bank-classifier dataset, cross validation does not make much sense anyway
 def cross_validation(
     dataset: torch.utils.data.Dataset, device: torch.device, cfg: BaseConfig
 ):

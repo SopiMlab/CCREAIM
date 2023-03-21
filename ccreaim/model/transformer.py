@@ -45,6 +45,8 @@ class PositionalEncoding(nn.Module):
         return self.dropout(x + self.pos_encoding[:, : x.size(1), :])  # type: ignore
 
 
+# THIS CLASS IS NOT USED ANYWHERE CURRENTLY, could maybe be removed but somewhat relevant
+# to the current model implementation so for now it can stay
 class Transformer(nn.Module):
     """
     Model from "A detailed guide to Pytorch's nn.Transformer() module.", by
