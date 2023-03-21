@@ -66,3 +66,11 @@ This project uses [Hydra](https://hydra.cc/) as a configuration tool. Hydra uses
 ### Wandb
 
 The project uses [Weights and Biases](https://wandb.ai/site), or wandb for short, for monitoring and storing training data. To use it, login to wandb in command line with `wandb login`, then start a training. By default, the configuration includes wandb logging, but if you want to exclude a training from wandb, use `logging.wandb=false`. More info on wandb usage [here](https://docs.wandb.ai/quickstart).
+
+### Feature extraction
+
+For feature extraction, [pyAudioAnalysis](https://github.com/tyiannak/pyAudioAnalysis) is used. More info on usage [here](https://github.com/tyiannak/pyAudioAnalysis/wiki).
+
+### Data augmentation
+
+For data augmentation, [PyTorch Audio Augmentations](https://github.com/Spijkervet/torchaudio-augmentations) is used.
