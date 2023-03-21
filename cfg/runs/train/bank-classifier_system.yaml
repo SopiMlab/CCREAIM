@@ -28,10 +28,7 @@ hyper:
     linear_map: true
     dim_feedforward: 1024
     dropout: 0.3
-  vqvae:
-    num_embeddings: 8192 # vocab size
-    beta: 0
-    reset_patience: -1
+    vocab_size: 8192
 
 
 resources:

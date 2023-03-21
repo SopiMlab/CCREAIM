@@ -175,7 +175,7 @@ def get_decoder(hyper_cfg: HyperConfig) -> CachedDecoderOnly:
             num_layers=hyper_cfg.transformer.num_dec_layers,
             dropout_p=hyper_cfg.transformer.dropout,
             linear_map=hyper_cfg.transformer.linear_map,
-            num_embeddings=hyper_cfg.vqvae.num_embeddings,
+            num_embeddings=hyper_cfg.transformer.vocab_size,
             dim_feedforward=hyper_cfg.transformer.dim_feedforward,
         )
     else:

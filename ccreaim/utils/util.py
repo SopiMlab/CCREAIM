@@ -24,6 +24,12 @@ def set_seed(seed: int):
         torch.cuda.manual_seed(seed)
 
 
+"""
+Both the chop_sample and chop_dataset utilities are pretty much unused with the bank-classifier implementation.
+They could be useful for something in the future however
+"""
+
+
 def chop_sample(sample: torch.Tensor, sample_length: int) -> list[torch.Tensor]:
     if len(sample.size()) != 1:
         sample = torch.mean(sample, 0)
@@ -96,14 +102,6 @@ def save_model_prediction(model_name: str, pred: torch.Tensor, save_path: Path) 
     try:
         if model_name == "transformer":
             torch.save(pred, save_path)
-        elif "e2e-chunked" in model_name:
-            torchaudio.save(  # type: ignore
-                save_path,
-                pred.flatten().unsqueeze(0),
-                16000,
-                encoding="PCM_F",
-                bits_per_sample=32,
-            )
         else:
             torchaudio.save(  # type: ignore
                 save_path, pred, 16000, encoding="PCM_F", bits_per_sample=32
@@ -112,6 +110,7 @@ def save_model_prediction(model_name: str, pred: torch.Tensor, save_path: Path) 
         log.error(e)
 
 
+# Returns a sorted list of all the files in data_root that have extension ext
 def get_sample_path_list(data_root: Path, ext: str = "mp3") -> list[Path]:
     return sorted(list(data_root.rglob(f"*.{ext}")))
 
@@ -233,7 +232,7 @@ def load_pre_trained_decoder_only(
 
 
 def get_tgt_mask(size: int) -> torch.Tensor:
-    # Generates a squeare matrix where the each row allows one word more to be seen
+    # Generates a square matrix where each row allows one more word to be seen
     mask = torch.tril(torch.ones(size, size) == 1)  # Lower triangular matrix
     mask = mask.float()
     mask = mask.masked_fill(mask == 0, float("-inf"))  # Convert zeros to -inf

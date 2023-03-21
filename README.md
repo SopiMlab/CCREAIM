@@ -27,9 +27,13 @@ notebooks/
 
 ## The model
 
-The model does prediction for the next token index in a sequence, for a predefined bank of audio samples. Essentially, the model is a causal decoder only transformer, so for training it uses a causal mask to prevent peeking into the future at training time and at inference the model returns "given some unfinished sequence, for each sample in the library, what is the likelihood that this sample is the next one in the sequence".
+The model does prediction for the next token index in a sequence, for a predefined bank of audio samples. Essentially, the model is a causal decoder-only transformer, so for training it uses a causal mask to prevent peeking into the future at training time and at inference the model returns "given some unfinished sequence, for each sample in the library, what is the likelihood that this sample is the next one in the sequence".
+
+These likelihoods will be used to create musically interesting combinations of the samples, and the results of those combinations are fed back to the transformer recurrently to create a continuation for some audio input.
 
 ## Usage
+
+`conda env create -f ccreaim.yml` to create the conda environment.
 
 ### Creating a dataset
 \[*This interface would be good to improve before publishing the code*\]
@@ -46,7 +50,7 @@ An example command to launch trainings:
 
 `nohup python main.py hydra/launcher=slurm runs=train/bank-classifier_system data.data_tar=/tmp/some_training_data.tar resources.timeout_min=120 hyper.transformer.dropout=0.5 hyper.learning_rate=1e-4,1e-5 hyper.epochs=80 logging.checkpoint=30 &`
 
-This command runs `main.py`with configs inherited from `cfg/base.yaml`, but overridden first with values from `cfg/hydra/launcher/slurm.yaml` and `cfg/runs/train/bank-classifier_system.yaml`, then again overridden with the values defined in the command. As a result, *two trainings are started* one with learning rate 1e-4 and one with learning rate 1e-5, otherwise identical. The logs and checkpoints for model weights will be output in locations defined as hydra configs in `base.yaml`.
+This command runs `main.py`with configs inherited from `cfg/base.yaml`, but overridden first with values from `cfg/hydra/launcher/slurm.yaml` and `cfg/runs/train/bank-classifier_system.yaml`, then again overridden with the values defined in the command. As a result, *two trainings are started*: one with learning rate 1e-4 and one with learning rate 1e-5, otherwise identical. The logs and checkpoints for model weights will be output in locations defined as hydra configs in `base.yaml`.
 
 ### Inference
 
