@@ -6,9 +6,9 @@ from pathlib import Path
 import torch
 import torchaudio
 
-
-# This file contains a lot of repeated code from "create_feature_dataset.py", where the 
+# This file contains a lot of repeated code from "create_feature_dataset.py", where the
 # code is well commented as well
+
 
 def save_object_to_tar(out_tar, obj, file_name):
     with io.BytesIO() as buffer:

@@ -10,15 +10,14 @@ from pyAudioAnalysis import ShortTermFeatures, audioBasicIO
 from scipy.io import wavfile
 from torchaudio_augmentations import *
 
-
 """
-This file can be used to create the training dataset required for the bank-classifier model. 
+This file can be used to create the training dataset required for the bank-classifier model.
 For other necessary scripts to run, check "create_sample_bank.py".
 """
 
 
 # Extract features from any length of audio
-# Check out 
+# Check out
 # https://github.com/tyiannak/pyAudioAnalysis/wiki
 # args:
 #   x: audio data, audioBasicIO.read_audio_file() output
@@ -33,10 +32,11 @@ def create_feature_vec_from_clip(x, Fs, frame_size, frame_step, deltas):
     features = torch.tensor(F).view(-1)
     return features
 
+
 # Helper function to save any python data to a file inside a tar archive,
-# args: 
+# args:
 #   out_tar: path to the archive
-#   obj: python object to save 
+#   obj: python object to save
 #   file_name: name of the destination file inside the archive
 def save_object_to_tar(out_tar, obj, file_name):
     with io.BytesIO() as buffer:
@@ -49,21 +49,22 @@ def save_object_to_tar(out_tar, obj, file_name):
         except Exception as e:
             print(e)
 
+
 # Produce augmentations from an audio sample, input should be torchaudio.load() output
 # num_datapoints is the length of the audio sample, basically sample_rate*sample_length_in_seconds
-# Check out 
+# Check out
 # https://github.com/Spijkervet/torchaudio-augmentations
 def data_augmentation(sample, num_datapoints, sample_rate, num_augments):
     transforms = [
         RandomResizedCrop(n_samples=num_datapoints),
         RandomApply([PolarityInversion()], p=0.8),
         RandomApply([Noise(min_snr=0.001, max_snr=0.005)], p=0.3),
-        #RandomApply([Gain()], p=0.2), # removed since gain can make the model not care about sudden changes in amplitude, which is unmusical
+        # RandomApply([Gain()], p=0.2), # removed since gain can make the model not care about sudden changes in amplitude, which is unmusical
         RandomApply([HighLowPass(sample_rate=sample_rate)], p=0.2),
         RandomApply([Delay(sample_rate=sample_rate)], p=0.5),
-        #RandomApply(
+        # RandomApply(
         #    [PitchShift(n_samples=num_datapoints, sample_rate=sample_rate)], p=0.4 # removed since it's clearly important to do distinctions between different pitches
-        #),
+        # ),
         RandomApply([Reverb(sample_rate=sample_rate)], p=0.3),
     ]
     transform = ComposeMany(transforms=transforms, num_augmented_samples=num_augments)
@@ -82,7 +83,7 @@ def get_augmented_features(
     features_list = []
     for i in range(num_augments):
         # Do this awful temporary save since the formats of pyAudioAnalysis (which uses scipy.io:s wavfile) and torchaudio
-        # do not match, augmentation uses torchaudio format and feature extraction uses scipy.io.wavfile format 
+        # do not match, augmentation uses torchaudio format and feature extraction uses scipy.io.wavfile format
         # There's probably a much cleaner way to do this
         torchaudio.save(
             f"/tmp/aug{i:05d}.wav",
@@ -126,7 +127,7 @@ def main():
         "/scratch/other/sopi/CCREAIM/datasets/maestro_bank_training_aug.tar"
     )
 
-    # Where to find the data, from which the dataset will be extracted 
+    # Where to find the data, from which the dataset will be extracted
     # This directory should contain at least vocab_size*sample_len_seconds of audio, otherwise the
     # script eventually fails at next(sample_paths)
     data_dir = "/scratch/other/sopi/CCREAIM/datasets/maestro_bank_data"
@@ -154,9 +155,7 @@ def main():
 
             # Iterate for the number of transformer contexts, aka transformer training samples (not including augmentation),
             # in the whole audio file (rounded down)
-            num_contexts = len(x) // (
-                Fs * sample_len_seconds * transformer_ctxt_len
-            )
+            num_contexts = len(x) // (Fs * sample_len_seconds * transformer_ctxt_len)
             for j in range(num_contexts):
                 # If we manage to get here and the dataset is already completed, do nothing (should be unnecessary)
                 if total_samples_loaded >= vocab_size:
@@ -219,7 +218,7 @@ def main():
                     if (total_samples_loaded - 1) % 300 == 0:
                         print(f"saving a sample: {name}.wav")
                     # torchaudio.save(f"{sample_dir}/{name}.wav", torch_sample.unsqueeze(0), samp_rate, encoding="PCM_F", bits_per_sample=32, format="wav")
-                
+
                 # Save training data into training_data_tar
                 save_object_to_tar(
                     training_out_tar, training_context, f"context_{j}.pt"
@@ -229,7 +228,7 @@ def main():
                     save_object_to_tar(
                         training_out_tar, aug_context, f"context_{j}_aug{k}.pt"
                     )
-            # After going through a 
+            # After going through a
             print(total_samples_loaded)
 
 

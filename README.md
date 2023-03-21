@@ -1,6 +1,6 @@
 # CCREAIM
 
-CCREAIM aims to explore musician and AI interactions in a live setting, utilizing transformer's attention weights to provide the musician with potentially interesting information about the motivation behind the AI's decisions. 
+CCREAIM aims to explore musician and AI interactions in a live setting, utilizing transformer's attention weights to provide the musician with potentially interesting information about the motivation behind the AI's decisions.
 
 This codebase includes the training and usage of models suitable for that task.
 
@@ -23,26 +23,26 @@ cfg/
         train/
 notebooks/
 ```
-`main.py` is used for training and non-live testing of the model, while `live.py` is used for the live setting. `ccreaim`-directory contains code relevant to the training of the model, as well as some useful utils. `cfg`-directory contains hydra configurations for both live and non-live situations. 
+`main.py` is used for training and non-live testing of the model, while `live.py` is used for the live setting. `ccreaim`-directory contains code relevant to the training of the model, as well as some useful utils. `cfg`-directory contains hydra configurations for both live and non-live situations.
 
 ## The model
 
-The model does prediction for the next token index in a sequence, for a predefined bank of audio samples. Essentially, the model is a causal decoder only transformer, so for training it uses a causal mask to prevent peeking into the future at training time and at inference the model returns "given some unfinished sequence, for each sample in the library, what is the likelihood that this sample is the next one in the sequence".  
+The model does prediction for the next token index in a sequence, for a predefined bank of audio samples. Essentially, the model is a causal decoder only transformer, so for training it uses a causal mask to prevent peeking into the future at training time and at inference the model returns "given some unfinished sequence, for each sample in the library, what is the likelihood that this sample is the next one in the sequence".
 
 ## Usage
 
 ### Creating a dataset
 \[*This interface would be good to improve before publishing the code*\]
 
-To create a dataset, use `ccreaim/utils/create_feature_dataset.py`. Before running the script, some variables (mostly paths to directories/output paths) in the file should be modified. A directory with enough audio data (`vocab_size*sample_len_seconds`) should be created beforehand and specified in the code. All of the details are commented in the code itself. 
+To create a dataset, use `ccreaim/utils/create_feature_dataset.py`. Before running the script, some variables (mostly paths to directories/output paths) in the file should be modified. A directory with enough audio data (`vocab_size*sample_len_seconds`) should be created beforehand and specified in the code. All of the details are commented in the code itself.
 
-An accompanying script `ccreaim/utils/create_sample_bank.py` should be run on the same audio directory, for inference purposes. 
+An accompanying script `ccreaim/utils/create_sample_bank.py` should be run on the same audio directory, for inference purposes.
 
-### Running a training  
+### Running a training
 
-To run a training, run `main.py` with relevant hydra configs. 
+To run a training, run `main.py` with relevant hydra configs.
 
-An example command to launch trainings: 
+An example command to launch trainings:
 
 `nohup python main.py hydra/launcher=slurm runs=train/bank-classifier_system data.data_tar=/tmp/some_training_data.tar resources.timeout_min=120 hyper.transformer.dropout=0.5 hyper.learning_rate=1e-4,1e-5 hyper.epochs=80 logging.checkpoint=30 &`
 
@@ -50,7 +50,7 @@ This command runs `main.py`with configs inherited from `cfg/base.yaml`, but over
 
 ### Inference
 
-Inference is done in a standard way with the transformer, `notebooks/test_model_bank.ipynb` has examples for how to run these. Notably, the cacheing does not work currently for some situations, so for now the standard transformer is used by counterintuitively setting `model.train()` during inference, and setting the training specific hyperparameter dropout to zero. 
+Inference is done in a standard way with the transformer, `notebooks/test_model_bank.ipynb` has examples for how to run these. Notably, the cacheing does not work currently for some situations, so for now the standard transformer is used by counterintuitively setting `model.train()` during inference, and setting the training specific hyperparameter dropout to zero.
 
 ### Live
 \[**TODO**: implement for the new model\]

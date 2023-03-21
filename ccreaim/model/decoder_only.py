@@ -70,7 +70,6 @@ class CachedDecoderOnly(nn.Module):
 
     def generate() -> None:
         return None
-        
 
 
 class CachedTransformerEncoder(nn.TransformerEncoder):

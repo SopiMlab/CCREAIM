@@ -59,6 +59,7 @@ class AudioDataset(data.Dataset):
     def __len__(self):
         return len(self.sample_path_list)
 
+
 class Bank(data.Dataset):
     def __init__(self, data_root: Path, context_length: int, ext: str = "pt"):
         self.data_root = data_root

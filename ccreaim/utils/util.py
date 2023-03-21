@@ -231,6 +231,7 @@ def load_pre_trained_decoder_only(
             f"{pretrained_hyper_cfg.transformer.linear_map}\n"
         )
 
+
 def get_tgt_mask(size: int) -> torch.Tensor:
     # Generates a squeare matrix where the each row allows one word more to be seen
     mask = torch.tril(torch.ones(size, size) == 1)  # Lower triangular matrix
