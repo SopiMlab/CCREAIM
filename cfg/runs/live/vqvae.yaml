@@ -1,0 +1,5 @@
+# @package _global_
+
+#load_model_path: /home/ccreaim/ccreaim_models/res-vq-vae_seqlen-65536_bs-64_lr-0.001_seed-0_ep-030.pt
+load_model_path: /home/ccreaim/ccreaim_models/res-vq-vae_seqlen-4096_bs-64_lr-0.001_seed-0_ep-010.pt
+seq_len: 4096

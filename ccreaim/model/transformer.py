@@ -5,7 +5,7 @@ from typing import Optional
 import torch
 from torch import nn
 
-log = logging.getLogger(__name__)
+from ..utils.cfg_classes import HyperConfig
 
 
 class PositionalEncoding(nn.Module):
@@ -45,6 +45,8 @@ class PositionalEncoding(nn.Module):
         return self.dropout(x + self.pos_encoding[:, : x.size(1), :])  # type: ignore
 
 
+# THIS CLASS IS NOT USED ANYWHERE CURRENTLY, could maybe be removed but somewhat relevant
+# to the current model implementation so for now it can stay
 class Transformer(nn.Module):
     """
     Model from "A detailed guide to Pytorch's nn.Transformer() module.", by
@@ -59,12 +61,14 @@ class Transformer(nn.Module):
         num_encoder_layers: int,
         num_decoder_layers: int,
         dropout_p: float,
+        linear_map: bool = False,
+        num_embeddings: int = 0,
     ):
         super().__init__()
 
         # LAYERS
         self.positional_encoder = PositionalEncoding(
-            dim_model=dim_model, dropout_p=dropout_p, max_len=1000
+            dim_model=dim_model, dropout_p=dropout_p, max_len=10000
         )
         self.transformer = nn.Transformer(
             d_model=dim_model,
@@ -74,6 +78,11 @@ class Transformer(nn.Module):
             dropout=dropout_p,
             batch_first=True,
         )
+
+        if linear_map:
+            self.trf_out_to_tokens = nn.Linear(dim_model, num_embeddings)
+        else:
+            self.trf_out_to_tokens = nn.Identity()
 
     def forward(
         self,
@@ -95,7 +104,7 @@ class Transformer(nn.Module):
         tgt = self.positional_encoder(tgt)
 
         # Transformer blocks - Out size = (batch_size, sequence length, num_tokens)
-        out = self.transformer(
+        trf_out = self.transformer(
             src,
             tgt,
             tgt_mask=tgt_mask,
@@ -106,6 +115,7 @@ class Transformer(nn.Module):
             memory_key_padding_mask=memory_key_padding_mask,
         )
 
+        out = self.trf_out_to_tokens(trf_out)
         return out
 
     def get_tgt_mask(self, size: int) -> torch.Tensor:
@@ -117,14 +127,17 @@ class Transformer(nn.Module):
         return mask
 
 
-def get_transformer(name: str, latent_dim: int) -> Transformer:
-    if name == "base":
+def get_transformer(hyper_cfg: HyperConfig) -> Transformer:
+    if hyper_cfg.model == "transformer":
         return Transformer(
-            dim_model=latent_dim,
-            num_heads=8,
-            num_encoder_layers=1,
-            num_decoder_layers=1,
+            dim_model=hyper_cfg.latent_dim,
+            num_heads=hyper_cfg.latent_dim
+            // hyper_cfg.transformer.num_heads_latent_dimension_div,
+            num_encoder_layers=hyper_cfg.transformer.num_enc_layers,
+            num_decoder_layers=hyper_cfg.transformer.num_dec_layers,
             dropout_p=0.1,
+            linear_map=hyper_cfg.transformer.linear_map,
+            num_embeddings=hyper_cfg.vqvae.num_embeddings,
         )
     else:
-        raise ValueError(f"Transformer model not implemented: {name}")
+        raise ValueError(f"Transformer model not implemented: {hyper_cfg.model}")

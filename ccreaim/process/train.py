@@ -6,7 +6,9 @@ import torch.utils.data
 from omegaconf import OmegaConf
 
 import wandb
-from utils import cfg_classes, util
+
+from ..model import operate
+from ..utils import cfg_classes, util
 
 log = logging.getLogger(__name__)
 
@@ -14,17 +16,17 @@ log = logging.getLogger(__name__)
 def train(
     model: torch.nn.Module,
     dataloader: torch.utils.data.DataLoader,
-    optimizer,  # torch optimizer
     device: torch.device,
     cfg: cfg_classes.BaseConfig,
     fold: int = 0,
 ):
-
+    optimizer = torch.optim.Adam(model.parameters(), cfg.hyper.learning_rate)
+    scheduler = torch.optim.lr_scheduler.ExponentialLR(
+        optimizer, gamma=cfg.hyper.lr_scheduler_gamma
+    )
     if cfg.logging.wandb:
         wandb_group_name = f"{cfg.hyper.model}-{cfg.logging.exp_name}"
-        wandb_exp_name = (
-            f"{cfg.hyper.model}-{cfg.logging.exp_name}-train-seed:{str(cfg.hyper.seed)}"
-        )
+        wandb_exp_name = f"{cfg.hyper.model}-{cfg.logging.exp_name}-train-seed:{str(cfg.hyper.seed)}-id:{cfg.logging.run_id}"
         if fold != 0:
             wandb_exp_name += f"-fold:{fold}"
 
@@ -46,7 +48,7 @@ def train(
     for epoch in range(1, cfg.hyper.epochs + 1):
         running_loss = torch.tensor(0.0)
         for batchnum, batch in enumerate(dataloader):
-            loss, _, info = util.step(model, batch, device, cfg)
+            loss, _, info = operate.step(model, batch, device, cfg.hyper, batchnum)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -64,31 +66,44 @@ def train(
         if not cfg.logging.silent:
             log.info(f"Epoch {epoch} complete, total loss: {running_loss}")
 
+        if cfg.hyper.lr_scheduler_gamma < 1.0:
+            scheduler.step()
+            if not cfg.logging.silent:
+                log.info(
+                    f"Lowering learning rate to: {scheduler.get_last_lr()[-1]:.3e}"
+                )
+
         if cfg.logging.checkpoint != 0 and epoch % cfg.logging.checkpoint == 0:
             save_path = checkpoints_path / Path(f"{model_name}_ep-{epoch:03d}.pt")
-            torch.save(
-                {
-                    "epoch": epoch,
-                    "model": model,
-                    "model_state_dict": model.state_dict(),
-                    "optimizer_state_dict": optimizer.state_dict(),
-                    "loss": running_loss,
-                },
-                save_path,
-            )
+            try:
+                torch.save(
+                    {
+                        "epoch": epoch,
+                        "model_state_dict": model.state_dict(),
+                        "hyper_config": OmegaConf.to_container(cfg.hyper),
+                        "optimizer_state_dict": optimizer.state_dict(),
+                        "loss": running_loss,
+                    },
+                    save_path,
+                )
+            except Exception as e:
+                log.error(e)
 
     # Save final model
     final_save_path = checkpoints_path / Path(f"{model_name}_final.pt")
-    torch.save(
-        {
-            "epoch": cfg.hyper.epochs,
-            "model": model,
-            "model_state_dict": model.state_dict(),
-            "optimizer_state_dict": optimizer.state_dict(),
-            "loss": 0,
-        },
-        final_save_path,
-    )
+    try:
+        torch.save(
+            {
+                "epoch": cfg.hyper.epochs,
+                "model_state_dict": model.state_dict(),
+                "hyper_config": OmegaConf.to_container(cfg.hyper),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "loss": 0,
+            },
+            final_save_path,
+        )
+    except Exception as e:
+        log.error(e)
 
     if cfg.logging.wandb:
         wandb.finish()

@@ -2,7 +2,7 @@ hydra:
   run:
     dir: /scratch/other/sopi/CCREAIM/logs/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}
   sweep:
-    dir: /scratch/other/sopi/CCREAIM/logs/multirun/${now:%Y-%m-%d}/${hyper.model}_${eval:'"train" if ${process.train} else "test"'}_${now:%H-%M-%S}
+    dir: /scratch/other/sopi/CCREAIM/logs/${now:%Y-%m-%d}/${hyper.model}_${eval:'"train" if ${process.train} else "test"'}_${now:%H-%M-%S}
     subdir: ${hydra.job.num}
   mode: MULTIRUN
   callbacks:
@@ -22,14 +22,13 @@ logging:
   run_id: ${now:%Y-%m-%d}-${now:%H-%M-%S}-${hydra:job.num}
   # Saved model destination
   model_checkpoints: ${hydra:sweep.dir}/${hydra:sweep.subdir}/checkpoints
-  load_model_path: ???
+  load_model_path: null
   checkpoint: 5
   # Output saving
   save_pred: false
   save_one_per_batch: true
   pred_output: ${hydra:sweep.dir}/${hydra:sweep.subdir}/predictions
-  save_encoder_output: false
-  encoder_output: /scratch/other/sopi/CCREAIM/datasets/test/out/enc
+
 
 process:
   train: ???
@@ -71,13 +70,20 @@ hyper:
   model: ???
   latent_dim: ???
   seq_len: ???
+  num_seq: 1
+  seq_cat: false
   epochs: ???
   batch_size: ???
   learning_rate: ???
-  kld_loss:
-    weight: ???
-  spectral_loss:
-    weight: ???
-    stft_bins: ???
-    stft_hop_length: ???
-    stft_window_size: ???
+  lr_scheduler_gamma: 1.0
+  pre_trained_ae_path: null
+  pre_trained_vqvae_path: null
+  pre_trained_transformer_path: null
+  transformer: null
+    # num_heads_latent_dimension_div: ???
+    # num_enc_layers: ???
+    # num_dec_layers: ???
+    # autoregressive_loss_weight: ???
+    # linear_map: ???
+    # dim_feedforward: ???
+    # vocab_size: ???

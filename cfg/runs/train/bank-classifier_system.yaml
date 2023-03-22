@@ -1,0 +1,45 @@
+# @package _global_
+process:
+  train: true
+  cross_val_k: 0
+
+logging:
+  exp_name: system
+  checkpoint: 10
+  save_pred: false
+  save_one_per_batch: false
+
+data:
+  data_tar: ???
+
+hyper:
+  model: bank-classifier
+  latent_dim: 612
+  seed: 0
+  seq_len: 8 # context length (not used anywhere, can be left blank)
+  epochs: 10
+  batch_size: 4
+  learning_rate: 1e-4
+  transformer:
+    num_heads_latent_dimension_div: 153 # 4 heads
+    num_enc_layers: 0
+    num_dec_layers: 1
+    autoregressive_loss_weight: 1
+    linear_map: true
+    dim_feedforward: 1024
+    dropout: 0.3
+    vocab_size: 8192
+
+
+resources:
+  # DataLoader num_workers parameter
+  num_workers: 4
+
+  # General resource configs
+  timeout_min: 5000
+  cpus_per_task: 4
+  gpus_per_node: 1
+  tasks_per_node: 1
+  mem_gb: 4
+
+  nodes: 1
