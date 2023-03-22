@@ -50,7 +50,7 @@ An example command to launch trainings:
 
 `nohup python main.py hydra/launcher=slurm runs=train/bank-classifier_system data.data_tar=/tmp/some_training_data.tar resources.timeout_min=120 hyper.transformer.dropout=0.5 hyper.learning_rate=1e-4,1e-5 hyper.epochs=80 logging.checkpoint=30 &`
 
-This command runs `main.py`with configs inherited from `cfg/base.yaml`, but overridden first with values from `cfg/hydra/launcher/slurm.yaml` and `cfg/runs/train/bank-classifier_system.yaml`, then again overridden with the values defined in the command. As a result, *two trainings are started*: one with learning rate 1e-4 and one with learning rate 1e-5, otherwise identical. The logs and checkpoints for model weights will be output in locations defined as hydra configs in `base.yaml`.
+This command runs `main.py` with configs inherited from `cfg/base.yaml`, but overridden first with values from `cfg/hydra/launcher/slurm.yaml` and `cfg/runs/train/bank-classifier_system.yaml`, then again overridden with the values defined in the command. As a result, *two trainings are started*: one with learning rate 1e-4 and one with learning rate 1e-5, otherwise identical. The logs and checkpoints for model weights will be output in locations defined as hydra configs in `base.yaml`.
 
 ### Inference
 
@@ -65,7 +65,7 @@ A live session can be started with `python live.py runs=live/some_live_config.ya
 
 ### Hydra
 
-This project uses [Hydra](https://hydra.cc/) as a configuration tool. Hydra uses hierarchical configuration, where the configuration is composed from multiple sources. For our project, `base.yaml`/`live.yaml` holds the basic configuration, and different files in `cfg/runs/*` in tandem with the command line add to and override that basic configuration. More info on Hydra usage [here](https://hydra.cc/docs/intro/).
+This project uses [Hydra](https://hydra.cc/) as a configuration tool. Hydra uses hierarchical configuration, where the configuration is composed from multiple sources. For our project, `base.yaml`/`live.yaml` holds the basic configuration, and different files in `cfg/runs/*` in tandem with the command line add to and override that basic configuration. Our configuration utilizes [Submitit Launcher Plugin](https://hydra.cc/docs/plugins/submitit_launcher/) to interact with a Slurm job scheduler directly, this can be employed by adding the `hydra/launcher=slurm` command line option when launching a training/testing. More info on Hydra usage [here](https://hydra.cc/docs/intro/).
 
 ### Wandb
 

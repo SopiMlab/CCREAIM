@@ -60,22 +60,6 @@ class AudioDataset(data.Dataset):
         return len(self.sample_path_list)
 
 
-class Bank(data.Dataset):
-    def __init__(self, data_root: Path, context_length: int, ext: str = "pt"):
-        self.data_root = data_root
-        self.context_length = context_length
-        self.ext = ext
-        self.item_path_list = util.get_sample_path_list(self.data_root, self.ext)
-
-    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
-        file_name = str(self.item_path_list[index // self.context_length])
-        data = torch.load(file_name, map_location="cpu")
-        return data[index % self.context_length]
-
-    def __len__(self):
-        return len(self.item_path_list * context_length)
-
-
 class BankTransformerDataset(data.Dataset):
     def __init__(self, data_root: Path, ext: str = "pt"):
         self.data_root = data_root
