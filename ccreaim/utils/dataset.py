@@ -47,7 +47,7 @@ class AudioDataset(data.Dataset):
         self.data_root = Path(data_root)
         self.seq_len = seq_len
         self.ext = ext
-        self.sample_path_list = util.get_sample_path_list(self.data_root, self.ext)
+        self.sample_path_list = util.get_sample_path_list_orig(self.data_root, self.ext)
 
     def __getitem__(self, index: int) -> tuple[torch.Tensor, str]:
         file_name = str(self.sample_path_list[index])
@@ -64,6 +64,7 @@ class BankTransformerDataset(data.Dataset):
     def __init__(self, data_root: Path, ext: str = "pt"):
         self.data_root = data_root
         self.ext = ext
+        # Change between get_sample_path_list and get_sample_path_list_orig when using model trained on samples and maestro, respectively 
         self.item_path_list = util.get_sample_path_list(self.data_root, self.ext)
 
     def __getitem__(

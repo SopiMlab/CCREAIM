@@ -1,4 +1,5 @@
 import io
+import re
 import logging
 import math
 import random
@@ -108,10 +109,31 @@ def save_model_prediction(model_name: str, pred: torch.Tensor, save_path: Path) 
             )
     except Exception as e:
         log.error(e)
-
+        
+        
+# Returns files in ascending order w.r.t. the integer values that appear in the filenames of the training set files
+def extract_numbers(filename, path):
+    pattern = r'{}/sample_(\d+)_context_(\d+)(?:_aug(\d+))?\.pt'.format(path)
+    match = re.match(pattern, str(filename))
+    if match:
+        id, j, k = match.groups()
+        id, j = map(int, (id, j))
+        k = int(k) if k else 0
+        return (id, j, k)
+    else:
+        raise ValueError(f'Invalid filename format: {str(filename)}')
+        
 
 # Returns a sorted list of all the files in data_root that have extension ext
 def get_sample_path_list(data_root: Path, ext: str = "mp3") -> list[Path]:
+    print(data_root, len(list(data_root.rglob(f"*.{ext}"))))
+    files = list(data_root.rglob(f"*.{ext}"))
+    return sorted(files, key=lambda fn: extract_numbers(fn, data_root))
+
+
+# Returns a sorted list of all the files in data_root that have extension ext
+def get_sample_path_list_orig(data_root: Path, ext: str = "mp3") -> list[Path]:
+    print(data_root, len(list(data_root.rglob(f"*.{ext}"))))
     return sorted(list(data_root.rglob(f"*.{ext}")))
 
 
