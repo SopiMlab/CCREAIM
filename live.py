@@ -11,7 +11,6 @@ from hydra.core.utils import JobReturn, JobStatus
 from hydra.experimental.callback import Callback
 from omegaconf import OmegaConf
 from torchaudio.io import StreamReader, StreamWriter
-from pyAudioAnalysis import ShortTermFeatures
 
 from ccreaim.model import operate
 from ccreaim.utils import dataset, cfg_classes
@@ -178,6 +177,8 @@ def main(cfg):
     p_process.join()
     p_out.join()
     print("Finished")
+
+    
 
 
 if __name__ == "__main__":
