@@ -62,9 +62,9 @@ def data_augmentation(sample, num_datapoints, sample_rate, num_augments):
         # RandomApply([Gain()], p=0.2), # removed since gain can make the model not care about sudden changes in amplitude, which is unmusical
         RandomApply([HighLowPass(sample_rate=sample_rate)], p=0.2),
         RandomApply([Delay(sample_rate=sample_rate)], p=0.5),
-        # RandomApply(
-        #    [PitchShift(n_samples=num_datapoints, sample_rate=sample_rate)], p=0.4 # removed since it's clearly important to do distinctions between different pitches
-        # ),
+        RandomApply(
+           [PitchShift(n_samples=num_datapoints, sample_rate=sample_rate)], p=0.4 # removed since it's clearly important to do distinctions between different pitches
+        ),
         RandomApply([Reverb(sample_rate=sample_rate)], p=0.3),
     ]
     transform = ComposeMany(transforms=transforms, num_augmented_samples=num_augments)
@@ -120,28 +120,32 @@ def main():
     num_augments = 10
 
     # If you want to save some of the samples, where should they go
-    sample_dir = "/scratch/other/sopi/CCREAIM/datasets/maestro_bank_data_samples"
+    sample_dir = "/scratch/other/sopi/CCREAIM/datasets/samples_bank_data_samples"
 
     # Path to the transformer's training data
     training_data_tar = (
-        "/scratch/other/sopi/CCREAIM/datasets/maestro_bank_training_aug.tar"
+        "/scratch/other/sopi/CCREAIM/datasets/samples_sound_bank_training_aug.tar"
     )
 
     # Where to find the data, from which the dataset will be extracted
     # This directory should contain at least vocab_size*sample_len_seconds of audio, otherwise the
     # script eventually fails at next(sample_paths)
-    data_dir = "/scratch/other/sopi/CCREAIM/datasets/maestro_bank_data"
+    data_dir = "/scratch/other/sopi/CCREAIM/datasets/samples"
     ###########################################################################
 
     # Make an iterator out of all the names of files in data_dir
-    sample_paths = iter(sorted(os.listdir(data_dir)))
+    files = [f for f in os.listdir(data_dir) if os.path.isfile(os.path.join(data_dir, f)) and not f.startswith('.') and f.endswith('.wav')]
+    print(len(files))
+    sample_paths = iter(sorted(files))
 
     # Keep track of the number of total samples loaded
+    id = 0
     total_samples_loaded = 0
     with tarfile.open(training_data_tar, "a") as training_out_tar:
         # Continue until we have loaded a total of vocab_size audio samples
         while total_samples_loaded < vocab_size:
-
+            print("id:", id)
+            id+=1
             # Load both a scipy.io.wavfile and torchaudio.load formats
             sample_path = next(sample_paths)
             torch_data, samp_rate = torchaudio.load(f"{data_dir}/{sample_path}")
@@ -188,15 +192,16 @@ def main():
                     )
 
                     # Extract features from augmented versions of the clip
-                    aug_features = get_augmented_features(
-                        torch_sample.unsqueeze(0),
-                        samp_rate * sample_len_seconds,
-                        samp_rate,
-                        num_augments,
-                        frame_size,
-                        frame_step,
-                        deltas,
-                    )
+                    if num_augments > 0:
+                        aug_features = get_augmented_features(
+                            torch_sample.unsqueeze(0),
+                            samp_rate * sample_len_seconds,
+                            samp_rate,
+                            num_augments,
+                            frame_size,
+                            frame_step,
+                            deltas,
+                        )
 
                     # Insert the context data into the lists
                     for k in range(num_augments):
@@ -217,16 +222,16 @@ def main():
                     # Every 300 audio samples save that sample into {sample_dir}/
                     if (total_samples_loaded - 1) % 300 == 0:
                         print(f"saving a sample: {name}.wav")
-                    # torchaudio.save(f"{sample_dir}/{name}.wav", torch_sample.unsqueeze(0), samp_rate, encoding="PCM_F", bits_per_sample=32, format="wav")
-
+                        # torchaudio.save(f"{sample_dir}/{name}.wav", torch_sample.unsqueeze(0), samp_rate, encoding="PCM_F", bits_per_sample=32, format="wav")
+                print("total samples:", total_samples_loaded)
                 # Save training data into training_data_tar
                 save_object_to_tar(
-                    training_out_tar, training_context, f"context_{j}.pt"
+                    training_out_tar, training_context, f"sample_{id}_context_{j}.pt"
                 )
                 for k in range(num_augments):
                     aug_context = augmented_contexts[k]
                     save_object_to_tar(
-                        training_out_tar, aug_context, f"context_{j}_aug{k}.pt"
+                        training_out_tar, aug_context, f"sample_{id}_context_{j}_aug{k}.pt"
                     )
             # After going through a
             print(total_samples_loaded)

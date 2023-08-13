@@ -27,12 +27,14 @@ def main():
     sample_len_seconds = 1
     transformer_ctxt_len = 8
 
-    sample_data_tar = "/scratch/other/sopi/CCREAIM/datasets/maestro_bank_samples.tar"
+    sample_data_tar = "/scratch/other/sopi/CCREAIM/datasets/sounds_bank_samples.tar"
 
-    data_dir = "/scratch/other/sopi/CCREAIM/datasets/maestro_bank_data"
+    data_dir = "/scratch/other/sopi/CCREAIM/datasets/samples"
     sample_paths = iter(sorted(os.listdir(data_dir)))
 
     total_samples_loaded = 0
+
+    print(sample_data_tar)
 
     with tarfile.open(sample_data_tar, "a") as out_tar:
         while total_samples_loaded < vocab_size:
