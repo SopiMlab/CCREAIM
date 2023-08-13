@@ -6,7 +6,7 @@ defaults:
 load_model_path: ???
 input_device: "alsa"
 output_device: "alsa"
-sample_rate: 16000
+sample_rate: 22050
 segment_length: 1024
 buffer_chunk_size: 100
 seq_len: 65536

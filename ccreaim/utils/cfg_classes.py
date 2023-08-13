@@ -78,6 +78,8 @@ class HyperConfig:
     seed: int
     latent_dim: int
     seq_len: int  # basically context length, number of feature vectors. Unused but might come in handy
+    num_seq: int
+    seq_cat: bool
     epochs: int
     batch_size: int
     learning_rate: float
@@ -85,6 +87,8 @@ class HyperConfig:
     pre_trained_model_path: Optional[str] = None
     # These could be used to trigger util.load_pre_trained_transformer/decoder_only(),
     # but currently not implemented
+    pre_trained_ae_path: Optional[str] = None
+    pre_trained_vqvae_path: Optional[str] = None
     pre_trained_transformer_path: Optional[str] = None
     pre_trained_decoder_only_path: Optional[str] = None
     transformer: Optional[TransformerConfig] = None

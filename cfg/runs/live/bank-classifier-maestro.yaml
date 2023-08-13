@@ -1,0 +1,6 @@
+# @package _global_
+
+load_model_path: /home/ccreaim/ccreaim_models/bank-classifier/maestro_final.pt
+seq_len: 8
+dataset_non_aug: /home/ccreaim/ccreaim_data/maestro/maestro_bank_training.tar
+dataset_samples: /home/ccreaim/ccreaim_data/maestro/maestro_bank_samples.tar

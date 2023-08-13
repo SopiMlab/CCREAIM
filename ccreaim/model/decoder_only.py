@@ -55,18 +55,17 @@ class CachedDecoderOnly(nn.Module):
 
         # Embedding + positional encoding - Out size = (batch_size, sequence length, dim_model)
         tgt = self.positional_encoder(tgt)
-
         # Transformer blocks - Out size = (batch_size, sequence length, num_tokens)
-        trf_out = self.transformer_decoder(
+        trf_out, attn_weights = self.transformer_decoder(
             src=tgt,
             src_mask=tgt_mask,
             src_key_padding_mask=tgt_key_padding_mask,
         )
-        if not self.training:
-            trf_out = trf_out[0]
-
+        # if not self.training:
+        #     trf_out = trf_out[0]
+        print(trf_out.shape)
         out = self.trf_out_to_tokens(trf_out)
-        return out
+        return out, attn_weights
 
     def generate() -> None:
         return None
@@ -105,13 +104,12 @@ class CachedTransformerEncoder(nn.TransformerEncoder):
             if cache is not None:
                 raise ValueError("cache parameter should be None in training mode")
             for mod in self.layers:
-                output = mod(
+                output, attn_weights = mod(
                     output,
                     src_mask=src_mask,
                     src_key_padding_mask=src_key_padding_mask,
                 )
-
-            return output
+            return output, attn_weights
 
         new_token_cache = []
         for i, mod in enumerate(self.layers):
@@ -138,29 +136,31 @@ class CachedTransformerEncoderLayer(nn.TransformerEncoderLayer):
         src_key_padding_mask: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
 
-        if self.training:
-            # Use nn.TransformerEncoderLayer's forward function as is if training
-            return super().forward(
-                src,
-                src_mask=src_mask,
-                src_key_padding_mask=src_key_padding_mask,
-            )
+        # if self.training:
+        #     # Use nn.TransformerEncoderLayer's forward function as is if training
+        #     return super().forward(
+        #         src,
+        #         src_mask=src_mask,
+        #         src_key_padding_mask=src_key_padding_mask,
+        #     )
 
-        src_last_tok = src[:, -1:, :]
+        src_last_tok = src # src[:, -1:, :]
         # self attention
-        tmp_tgt = self.self_attn(
+        tmp_tgt, attn_weights = self.self_attn(
             src_last_tok,
             src,
             src,
             attn_mask=None,  # not needed because we only care about the last token
             key_padding_mask=src_key_padding_mask,
-        )[0]
+            average_attn_weights=False,
+        )
+        print("weights," , attn_weights)
         src_last_tok = src_last_tok + self.dropout1(tmp_tgt)
         src_last_tok = self.norm1(src_last_tok)
         # final feed-forward network
         src_last_tok = self.norm2(src_last_tok + self._ff_block(src_last_tok))
 
-        return src_last_tok
+        return src_last_tok, attn_weights
 
 
 def get_decoder(hyper_cfg: HyperConfig) -> CachedDecoderOnly:

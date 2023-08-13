@@ -1,0 +1,6 @@
+# @package _global_
+
+load_model_path: /home/ccreaim/ccreaim_models/bank-classifier/samples_final.pt
+seq_len: 8
+dataset_non_aug: /home/ccreaim/ccreaim_data/sounds/samples_sound_bank_training.tar
+dataset_samples: /home/ccreaim/ccreaim_data/sounds/sounds_bank_samples.tar

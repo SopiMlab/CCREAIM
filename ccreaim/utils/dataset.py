@@ -65,7 +65,7 @@ class BankTransformerDataset(data.Dataset):
         self.data_root = data_root
         self.ext = ext
         # Change between get_sample_path_list and get_sample_path_list_orig when using model trained on samples and maestro, respectively 
-        self.item_path_list = util.get_sample_path_list(self.data_root, self.ext)
+        self.item_path_list = util.get_sample_path_list_orig(self.data_root, self.ext)
 
     def __getitem__(
         self, index: int
