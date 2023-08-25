@@ -154,7 +154,8 @@ class CachedTransformerEncoderLayer(nn.TransformerEncoderLayer):
             key_padding_mask=src_key_padding_mask,
             average_attn_weights=False,
         )
-        print("weights," , attn_weights)
+        print("attn dims: (batch_size,num_heads,target seqlen,source seqlen)")
+        print("attn weights:", attn_weights.shape, attn_weights)
         src_last_tok = src_last_tok + self.dropout1(tmp_tgt)
         src_last_tok = self.norm1(src_last_tok)
         # final feed-forward network
