@@ -57,9 +57,26 @@ This command runs `main.py` with configs inherited from `cfg/base.yaml`, but ove
 Inference is done in a standard way with the transformer, `notebooks/test_model_bank.ipynb` has examples for how to run these. Notably, the cacheing does not work currently for some situations, so for now the standard transformer is used by counterintuitively setting `model.train()` during inference, and setting the training specific hyperparameter dropout to zero.
 
 ### Live
-\[**TODO**: implement for the new model\]
-
 A live session can be started with `python live.py runs=live/some_live_config.yaml`.
+Currently, we have the following options:
+* `python live.py runs=live/bank-classifier-samples.yaml` 
+    * Go to ccreaim/utils/dataset.py. Go to the BankTransformerDataset __init__ function and change the following row: 
+        * `self.item_path_list = util.get_sample_path_list(self.data_root, self.ext)`
+* `python live.py runs=live/bank-classifier-maestro.yaml` 
+    * Go to ccreaim/utils/dataset.py. Go to the BankTransformerDataset __init__ function and change the following row: 
+        * `self.item_path_list = util.get_sample_path_list_orig(self.data_root, self.ext)`
+
+You change the length of the live session from `live.py` by setting the `NUM_ITER` parameter to anything you want.
+Around 1250 iterations is one minute.
+
+### Attention Visualization
+
+In order to visualize the attention after running a live session with `live.py`, go into the `attention_visualization` folder and run: `python -m attention_visualization`.
+
+```bash
+cd attention_visualization
+python -m attention_visualization
+```
 
 ## Additional details
 

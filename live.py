@@ -17,7 +17,7 @@ from ccreaim.utils import dataset, cfg_classes
 from ccreaim.utils.postprocessing import top_k_top_p_filtering
 from ccreaim.utils.create_feature_dataset import create_feature_vec_from_clip
 
-NUM_ITER = 100
+NUM_ITER = 1000  # 1250 = 1 min
 
 
 # This hacky function works only with the non-augmented dataset, can be used for POC generation
@@ -29,19 +29,28 @@ def get_features_from_index(ind, dataset, seq_len):
 
 def gen_n_sec_audio(data_non_aug, n, model_input, trf, temperature, seq_len, device):
     tgt = torch.clone(model_input)
+    input_length = tgt.size(1)
+    # decays = torch.Tensor([(0.9 ** i) / input_length for i in range(input_length)]).view(1, 7, 1)
+    decays = torch.Tensor([float(1) / input_length for i in range(input_length)]).view(1, 7, 1)
     indices = torch.zeros(n)
+    inputwise_probabilities = torch.zeros(n, input_length)
     # No cacheing and outputing longer samples
     trf = trf.train()
     print(indices)
     for i in range(n):
         # Run through the forward function
         trf_out, attn_weights = trf(tgt.to(device))
+        attn_weights = attn_weights / torch.max(attn_weights)
         print("model_output:", trf_out.shape, attn_weights.shape)
-        trf_out_filtered = top_k_top_p_filtering(trf_out[:,-1,:].squeeze() / temperature, top_k=5, top_p=0)
-        print(trf_out_filtered)
+        trf_out = trf_out * decays
+        trf_out_filtered = top_k_top_p_filtering(trf_out.sum(dim=1).squeeze() / temperature, top_k=5, top_p=0)
+        print("trf_out_filtered", trf_out_filtered.shape)
         probabilities = F.softmax(trf_out_filtered)
+        print(probabilities)
         emb_ind = torch.multinomial(probabilities,1).item()
         indices[i] = emb_ind
+        inputwise_probs = F.softmax(trf_out.squeeze()[:,emb_ind])
+        inputwise_probabilities[i] = inputwise_probs
         next_feature = get_features_from_index(emb_ind, data_non_aug, seq_len)
         tgt = torch.cat(
             (
@@ -53,7 +62,7 @@ def gen_n_sec_audio(data_non_aug, n, model_input, trf, temperature, seq_len, dev
         probabilities = F.softmax(trf_out, dim=-1)
         # print(probabilities.max(dim=2)[0][-1][-1])
         # print(probabilities.max(dim=2)[1][-1][-1])
-    return indices
+    return indices, inputwise_probabilities, attn_weights
 
 
 def record(q1, in_device, src, segment_length, sample_rate):
@@ -68,12 +77,32 @@ def record(q1, in_device, src, segment_length, sample_rate):
         q1.put(chunk.mean(dim=1))
 
 
+# def record_wav(q1, audio, in_device, src, segment_length, sample_rate):
+#     wav, sr = torchaudio.load(audio) 
+#     s_in = StreamReader(src, format=in_device)
+#     s_in.add_basic_audio_stream(
+#         frames_per_chunk=segment_length, buffer_chunk_size=100, sample_rate=sample_rate
+#     )
+# 
+#     s_in_iter = s_in.stream(timeout=-1, backoff=0.1)
+#     for i in range(NUM_ITER):
+#         (chunk,) = next(s_in_iter)
+#         q1.put(chunk.mean(dim=1))   
+
+
 def process(q1, q2, model, segment_len, sample_rate, seq_len, latent_dim, data_non_aug, data_samples, device):
     # This could be worth it to rethink properly
     cur_len = 0
-    secs = 4
+    context_length = 8
+    secs = 7  # input length for inference
     samples_per_inference = sample_rate * secs
-    buffer_tensor = torch.zeros(samples_per_inference * 3)
+    print("samples_per_inference", samples_per_inference, "sample_rate", sample_rate, "secs", secs)
+    buffer_tensor = torch.zeros(samples_per_inference * 10)
+    inputwise_probabilities = torch.zeros(secs, secs)
+    model_inputs = []
+    first_pass = True
+    model_outputs = torch.zeros(sample_rate * secs, 1)
+    attn = torch.zeros(secs, model.transformer_decoder.layers[0].self_attn.num_heads, secs, secs)
 
     # This for-loop doesn't make sense here if segment_len < seq_len
     with torch.inference_mode():
@@ -88,29 +117,51 @@ def process(q1, q2, model, segment_len, sample_rate, seq_len, latent_dim, data_n
 
             # Extract a view of the tensor
             model_input = buffer_tensor[0:samples_per_inference]
+            slices = [model_input[i:i+sample_rate] for i in range(0, samples_per_inference, sample_rate)]
+            if first_pass:
+                model_inputs.extend([torch.unsqueeze(s, 1) for s in slices])
+                first_pass = False
+            else:
+                model_inputs.append(torch.unsqueeze(slices[-1], 1))
             print("model_init:", model_input.shape, max(model_input), min(model_input))
-            model_input = create_feature_vec_from_clip(model_input, samples_per_inference, 0.2, 0.1, True)
-            model_input = model_input.unsqueeze(dim=0).unsqueeze(dim=0).type(torch.FloatTensor)
+            features = []
+            for sample in slices:
+                feature_vec = create_feature_vec_from_clip(sample, sample_rate, 0.2, 0.1, True)
+                feature_vec = feature_vec.unsqueeze(dim=0).unsqueeze(dim=0).type(torch.FloatTensor)
+                features.append(feature_vec)
+            model_input = torch.cat(features, dim=1)
             print("model_input:", model_input.shape)
-            # print(model_input)
 
-            indices = gen_n_sec_audio(data_non_aug, secs, model_input, model, 1.0, seq_len, device)
+            # Run through the model
+            indices, ip, attn_weights = gen_n_sec_audio(data_non_aug, context_length-secs, model_input, model, 1.0, seq_len, device)
+            attn = torch.cat((attn, attn_weights), dim=0)
+            inputwise_probabilities = torch.cat((inputwise_probabilities, ip), dim=0)
+            print("indices:", indices)
             outputs = [data_samples[int(i.item())] for i in indices]  # TODO: Now just one second samples possible to process
             print("outputs:", [(out, name) for out, name in outputs])
             print("attention:", [l.self_attn.out_proj.weight for l in model.transformer_decoder.layers])
             output = torch.cat([out for out, _ in outputs], dim=1)
-            print(output)
-            # print("output:", outputs.shape, name)
 
             # Insert to the "play"-queue
             model_output = output.cpu().t()
             print("final:", model_output.shape, max(model_output), min(model_output))
             q2.put(model_output) # .view(1, 1)
+            model_outputs = torch.cat((model_outputs, model_output), dim=0)
 
             # Reset the buffer
-            buffer_tensor[0:samples_per_inference] = buffer_tensor[samples_per_inference : (2 * samples_per_inference)]
-            cur_len -= samples_per_inference
+            # Only removes the first n secs of samples from buffer
+            samples_to_remove = ((context_length - secs) * sample_rate)
+            to_shift = buffer_tensor[samples_to_remove:].clone()
+            buffer_tensor[:-samples_to_remove] = to_shift
+            cur_len -= samples_to_remove
 
+            # Below is for replacing whole input_sequence with new one (next samples from buffer)
+            # buffer_tensor[0:samples_per_inference] = buffer_tensor[samples_per_inference : (2 * samples_per_inference)]
+            # cur_len -= samples_per_inference
+            torch.save(attn, f"attention_visualization/attention_data/live_attention.pt")
+            torch.save(inputwise_probabilities, f"attention_visualization/attention_data/live_probs.pt")
+            torch.save(torch.cat(model_inputs, dim=0), f"attention_visualization/attention_data/live_model_input.pt")
+            torch.save(model_outputs, f"attention_visualization/attention_data/live_model_output.pt")
 
 def play(q2, out_device, dst, segment_length, sample_rate):
     with open("test.wav", "w") as f:
