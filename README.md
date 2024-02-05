@@ -81,14 +81,18 @@ For data augmentation, [PyTorch Audio Augmentations](https://github.com/Spijkerv
 
 ## License
 
-CCREAIM, a hybrid transformer architecture, utilizing attention weights to provide the musician with potentially interesting information about the motivation behind the AI's decisions, is provided by [SOPI research group](https://sopi.aalto.fi) Aalto University, School of Arts, Design and Architecture 2024, under the GPL license [GNU General Public License version 2 | Open Source Initiative](https://opensource.org/licenses/gpl-2.0.php) We make use of the following open source projects:
+Copyright (C) 2024 SOPI Research Group, Aalto University
+
+CCREAIM, a hybrid transformer architecture, utilizing attention weights to provide the musician with potentially interesting information about the motivation behind the AI's decisions, is provided by [SOPI research group](https://sopi.aalto.fi) Aalto University, School of Arts, Design and Architecture 2024, under the GPL license [GNU General Public License version 2 | Open Source Initiative](https://opensource.org/licenses/gpl-2.0.php) 
+
+
+We make use of the following open source projects:
  
 - Hydra (MIT Licence)
 - Wandb  (MIT Licence)
 - torchaudio-augmentations (MIT Licence)
 - pyAudioAnalysis (Apache-2.0)
  
-Copyright (C) 2024 SOPI Research Group, Aalto University
 
 --------------------------------------------------------------------
 
