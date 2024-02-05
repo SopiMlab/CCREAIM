@@ -81,9 +81,17 @@ For data augmentation, [PyTorch Audio Augmentations](https://github.com/Spijkerv
 
 ## License
 
+CCREAIM is a hybrid transformer architecture, utilising attention weights to provide the musician with potentially interesting information about the motivation behind the AI's decisions.
+
 Copyright (C) 2024 SOPI Research Group, Aalto University
 
-CCREAIM, a hybrid transformer architecture, utilizing attention weights to provide the musician with potentially interesting information about the motivation behind the AI's decisions, is provided by [SOPI research group](https://sopi.aalto.fi) Aalto University, School of Arts, Design and Architecture 2024, under the GPL license [GNU General Public License version 2 | Open Source Initiative](https://opensource.org/licenses/gpl-2.0.php) 
+This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 3 of the License, or (at your option) any later version.
+ 
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program; if not see https://www.gnu.org/licenses/ (https://www.gnu.org/licenses/)
+
+For further information please contact to Koray Tahiroglu; email: koray.tahiroglu@aalto.fi, mail: Aalto University School of Arts, Design and Architecture, Department of Media, room J101, Väre Otaniementie 14, 02150 Espoo, Finland
 
 
 We make use of the following open source projects:
@@ -93,15 +101,6 @@ We make use of the following open source projects:
 - torchaudio-augmentations (MIT Licence)
 - pyAudioAnalysis (Apache-2.0)
  
-
---------------------------------------------------------------------
-
-This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 2 of the License, or (at your option) any later version.
- 
-
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License along with this program; if not, write to the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA. For further information please contact to Koray Tahiroglu; email: koray.tahiroglu@aalto.fi, mail: Aalto University School of Arts, Design and Architecture, Department of Media, room J101, Väre Otaniementie 14, 02150 Espoo, Finland
 
 
 
