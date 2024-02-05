@@ -89,7 +89,7 @@ This program is free software; you can redistribute it and/or modify it under th
  
 This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License along with this program; if not see https://www.gnu.org/licenses/ (https://www.gnu.org/licenses/)
+You should have received a copy of the GNU General Public License along with this program; if not see https://www.gnu.org/licenses/
 
 For further information please contact to Koray Tahiroglu; email: koray.tahiroglu@aalto.fi, mail: Aalto University School of Arts, Design and Architecture, Department of Media, room J101, Väre Otaniementie 14, 02150 Espoo, Finland
 
