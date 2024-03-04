@@ -90,7 +90,7 @@ The project uses [Weights and Biases](https://wandb.ai/site), or wandb for short
 
 ### Feature extraction
 
-For feature extraction, [pyAudioAnalysis](https://github.com/tyiannak/pyAudioAnalysis) is used. More info on usage [here](https://github.com/tyiannak/pyAudioAnalysis/wiki).
+For feature extraction, [pyAudioAnalyshub/spawn-pending/murhum2is](https://github.com/tyiannak/pyAudioAnalysis) is used. More info on usage [here](https://github.com/tyiannak/pyAudioAnalysis/wiki).
 
 ### Data augmentation
 

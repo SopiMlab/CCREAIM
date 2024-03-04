@@ -71,23 +71,15 @@ def record(q1, in_device, src, segment_length, sample_rate):
         frames_per_chunk=segment_length, buffer_chunk_size=100, sample_rate=sample_rate
     )
 
-    s_in_iter = s_in.stream(timeout=-1, backoff=0.1)
-    for i in range(NUM_ITER):
-        (chunk,) = next(s_in_iter)
-        q1.put(chunk.mean(dim=1))
-
-
-# def record_wav(q1, audio, in_device, src, segment_length, sample_rate):
-#     wav, sr = torchaudio.load(audio) 
-#     s_in = StreamReader(src, format=in_device)
-#     s_in.add_basic_audio_stream(
-#         frames_per_chunk=segment_length, buffer_chunk_size=100, sample_rate=sample_rate
-#     )
-# 
-#     s_in_iter = s_in.stream(timeout=-1, backoff=0.1)
-#     for i in range(NUM_ITER):
-#         (chunk,) = next(s_in_iter)
-#         q1.put(chunk.mean(dim=1))   
+    s_out = StreamWriter(dst="attention_visualization/attention_data/live_model_input.wav")
+    s_out.add_audio_stream(sample_rate, 1)
+    with s_out.open():
+        s_in_iter = s_in.stream(timeout=-1, backoff=0.1)
+        for i in range(NUM_ITER):
+            (chunk,) = next(s_in_iter)
+            c = chunk.mean(dim=1)
+            q1.put(c)
+            s_out.write_audio_chunk(0, c.unsqueeze(1))
 
 
 def process(q1, q2, model, segment_len, sample_rate, seq_len, latent_dim, data_non_aug, data_samples, device):
@@ -164,14 +156,15 @@ def process(q1, q2, model, segment_len, sample_rate, seq_len, latent_dim, data_n
             torch.save(model_outputs, f"attention_visualization/attention_data/live_model_output.pt")
 
 def play(q2, out_device, dst, segment_length, sample_rate):
-    with open("test.wav", "w") as f:
-        s_out = StreamWriter(dst=dst, format=out_device)
-        s_out.add_audio_stream(sample_rate, 1, format="flt")
-        with s_out.open():
-            times = []
-            for i in range(NUM_ITER):
-                chunk = q2.get().type(torch.FloatTensor)
-                s_out.write_audio_chunk(0, chunk)
+    s_out = StreamWriter(dst=dst, format=out_device)
+    s_out_file = StreamWriter(dst="attention_visualization/attention_data/live_model_output.wav")
+    s_out.add_audio_stream(sample_rate, 1, format="flt")
+    s_out_file.add_audio_stream(sample_rate, 1)
+    with s_out.open():
+        for i in range(NUM_ITER):
+            chunk = q2.get().type(torch.FloatTensor)
+            s_out.write_audio_chunk(0, chunk)
+            s_out_file.write_audio_chunk(0, chunk)
 
 
 @hydra.main(version_base=None, config_path="cfg", config_name="live")

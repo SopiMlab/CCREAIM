@@ -5,14 +5,13 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import seaborn as sns
 import torch
+import torchaudio
 import mplcursors
 
 from utils import return_clip_from_path
 
 SOURCE_LABEL = "source"
 TARGET_LABEL = "target"
-
-LINE_WIDTH_SCALE = 3
 
 live = True
 
@@ -108,7 +107,7 @@ def plot_attention(attn_weights, probs):
                 for head in range(num_heads):
                     src_tok_total_attn = aw[head,:,j]
                     if src_tok_total_attn[j] >= 0.1:
-                        l = ax.plot([x0 + num_heads_x[head], x1 + num_heads_x[head]], [y0, y1], head_colors[head], label=f"{SOURCE_LABEL}_sec{i-input_length+j}_{TARGET_LABEL}_sec{i}_head{head}", linewidth=LINE_WIDTH_SCALE * src_tok_total_attn.sum(), visible=not using_hover_attention)
+                        l = ax.plot([x0 + num_heads_x[head], x1 + num_heads_x[head]], [y0, y1], head_colors[head], label=f"{SOURCE_LABEL}_sec{i-input_length+j}_{TARGET_LABEL}_sec{i}_head{head}", linewidth=src_tok_total_attn.sum(), visible=not using_hover_attention)
                         lines.append(l[0])
             bars.append(b)
             sec_bars.append(b.patches[0])
@@ -171,7 +170,7 @@ def on_hover_color(sel):
 
 def on_hover_annotation(sel):
     if type(sel.artist) == matplotlib.lines.Line2D:
-        sel.annotation.set_text(sel.artist.get_lw() / LINE_WIDTH_SCALE)
+        sel.annotation.set_text(sel.artist.get_lw())
         return
     sel.annotation.set_text(sel.artist.get_label())
     def on_unhover_annotation(event):
@@ -241,15 +240,21 @@ def concat_audio_files(file1_path, file2_path):
     from scipy.io.wavfile import write
     import numpy as np
     sample_rate = 22050
-    tensor1 = torch.load(file1_path)  # Replace with your file paths
-    tensor2 = torch.load(file2_path)
-    tensor1 = torch.cat((tensor1, torch.Tensor(sample_rate, 1)), dim=0)
+    tensor1, sr = torchaudio.load(file1_path)  # Human
+    tensor1 = tensor1.T
+    assert sample_rate == sr
+    print(tensor1.shape)
+    tensor2 = torch.load(file2_path)  # AI
+    print(tensor2.shape)
+
+    if tensor2.shape[0] - tensor1.shape[0] > 0:
+        tensor1 = torch.cat((tensor1, torch.zeros(tensor2.shape[0] - tensor1.shape[0], 1)), dim=0)
+    else:
+        tensor2 = torch.cat((tensor2, torch.zeros(tensor1.shape[0] - tensor2.shape[0], 1)), dim=0)
     if tensor1.shape[1] != tensor2.shape[1]:
         print("Error: The tensors have a different number of seconds. Please make sure they are compatible.")
     merged_tensor = torch.stack([tensor1.squeeze(1), tensor2.squeeze(1)])
-    print(merged_tensor.shape)
     merged_numpy = merged_tensor.numpy()
-
     # Convert to int16 format because scipy.io.wavfile expects PCM format
     # You might lose some information due to this conversion. Be sure to normalize your tensors to be within [-1, 1] before converting.
     merged_numpy_int16 = np.int16(merged_numpy * 32767)
@@ -268,7 +273,7 @@ print(bars)
 print("")
 print(animation_bars)
 
-concat_audio_files('attention_data/live_model_input.pt', 'attention_data/live_model_output.pt')
+concat_audio_files('attention_data/live_model_input.wav', 'attention_data/live_model_output.pt')
 ani = animation.ArtistAnimation(fig=fig, artists=cumulative_combine(animation_bars), interval=1000)
 ani.save("attention_data/live_attention_visualization.mp4", animation.FFMpegWriter(fps=1))
 attention_visualization_video("attention_data/live_attention_visualization.mp4", "attention_data/live_model.wav", "attention_data/final_live_attention_visualization.mp4")
