@@ -106,7 +106,7 @@ def plot_attention(attn_weights, probs):
                 x1,y1 = get_center_coords_of_bar(other_bar.patches[0])
                 aw = attn_weights[i]
                 for head in range(num_heads):
-                    src_tok_total_attn = aw[head,:,j] * p
+                    src_tok_total_attn = aw[head,:,j]
                     if src_tok_total_attn[j] >= 0.1:
                         l = ax.plot([x0 + num_heads_x[head], x1 + num_heads_x[head]], [y0, y1], head_colors[head], label=f"{SOURCE_LABEL}_sec{i-input_length+j}_{TARGET_LABEL}_sec{i}_head{head}", linewidth=LINE_WIDTH_SCALE * src_tok_total_attn.sum(), visible=not using_hover_attention)
                         lines.append(l[0])
